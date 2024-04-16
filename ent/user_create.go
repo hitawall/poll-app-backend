@@ -6,7 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"poll-app-backend/ent/poll"
 	"poll-app-backend/ent/user"
+	"poll-app-backend/ent/vote"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -35,6 +37,36 @@ func (uc *UserCreate) SetName(s string) *UserCreate {
 func (uc *UserCreate) SetPassword(s string) *UserCreate {
 	uc.mutation.SetPassword(s)
 	return uc
+}
+
+// AddPollIDs adds the "polls" edge to the Poll entity by IDs.
+func (uc *UserCreate) AddPollIDs(ids ...int) *UserCreate {
+	uc.mutation.AddPollIDs(ids...)
+	return uc
+}
+
+// AddPolls adds the "polls" edges to the Poll entity.
+func (uc *UserCreate) AddPolls(p ...*Poll) *UserCreate {
+	ids := make([]int, len(p))
+	for i := range p {
+		ids[i] = p[i].ID
+	}
+	return uc.AddPollIDs(ids...)
+}
+
+// AddVoteIDs adds the "votes" edge to the Vote entity by IDs.
+func (uc *UserCreate) AddVoteIDs(ids ...int) *UserCreate {
+	uc.mutation.AddVoteIDs(ids...)
+	return uc
+}
+
+// AddVotes adds the "votes" edges to the Vote entity.
+func (uc *UserCreate) AddVotes(v ...*Vote) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return uc.AddVoteIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -117,6 +149,38 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := uc.mutation.Password(); ok {
 		_spec.SetField(user.FieldPassword, field.TypeString, value)
 		_node.Password = value
+	}
+	if nodes := uc.mutation.PollsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.PollsTable,
+			Columns: []string{user.PollsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(poll.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.VotesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.VotesTable,
+			Columns: []string{user.VotesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(vote.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

@@ -8,24 +8,109 @@ import (
 )
 
 var (
+	// PollsColumns holds the columns for the "polls" table.
+	PollsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "title", Type: field.TypeString},
+		{Name: "user_polls", Type: field.TypeInt, Nullable: true},
+	}
+	// PollsTable holds the schema information for the "polls" table.
+	PollsTable = &schema.Table{
+		Name:       "polls",
+		Columns:    PollsColumns,
+		PrimaryKey: []*schema.Column{PollsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "polls_users_polls",
+				Columns:    []*schema.Column{PollsColumns[2]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
+	// PollOptionsColumns holds the columns for the "poll_options" table.
+	PollOptionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "text", Type: field.TypeString},
+		{Name: "votes", Type: field.TypeInt, Default: 0},
+		{Name: "poll_polloptions", Type: field.TypeInt, Nullable: true},
+		{Name: "vote_polloption", Type: field.TypeInt, Nullable: true},
+	}
+	// PollOptionsTable holds the schema information for the "poll_options" table.
+	PollOptionsTable = &schema.Table{
+		Name:       "poll_options",
+		Columns:    PollOptionsColumns,
+		PrimaryKey: []*schema.Column{PollOptionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "poll_options_polls_polloptions",
+				Columns:    []*schema.Column{PollOptionsColumns[3]},
+				RefColumns: []*schema.Column{PollsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "poll_options_votes_polloption",
+				Columns:    []*schema.Column{PollOptionsColumns[4]},
+				RefColumns: []*schema.Column{VotesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "email", Type: field.TypeString, Unique: true},
 		{Name: "name", Type: field.TypeString},
 		{Name: "password", Type: field.TypeString},
+		{Name: "poll_option_voted_by", Type: field.TypeInt, Nullable: true},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
 		Name:       "users",
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "users_poll_options_voted_by",
+				Columns:    []*schema.Column{UsersColumns[4]},
+				RefColumns: []*schema.Column{PollOptionsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
+	// VotesColumns holds the columns for the "votes" table.
+	VotesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "voted_on", Type: field.TypeTime},
+		{Name: "user_votes", Type: field.TypeInt, Nullable: true},
+	}
+	// VotesTable holds the schema information for the "votes" table.
+	VotesTable = &schema.Table{
+		Name:       "votes",
+		Columns:    VotesColumns,
+		PrimaryKey: []*schema.Column{VotesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "votes_users_votes",
+				Columns:    []*schema.Column{VotesColumns[2]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		PollsTable,
+		PollOptionsTable,
 		UsersTable,
+		VotesTable,
 	}
 )
 
 func init() {
+	PollsTable.ForeignKeys[0].RefTable = UsersTable
+	PollOptionsTable.ForeignKeys[0].RefTable = PollsTable
+	PollOptionsTable.ForeignKeys[1].RefTable = VotesTable
+	UsersTable.ForeignKeys[0].RefTable = PollOptionsTable
+	VotesTable.ForeignKeys[0].RefTable = UsersTable
 }

@@ -2,8 +2,19 @@
 
 package ent
 
+import (
+	"poll-app-backend/ent/polloption"
+	"poll-app-backend/ent/schema"
+)
+
 // The init function reads all schema descriptors with runtime code
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	polloptionFields := schema.PollOption{}.Fields()
+	_ = polloptionFields
+	// polloptionDescVotes is the schema descriptor for votes field.
+	polloptionDescVotes := polloptionFields[1].Descriptor()
+	// polloption.DefaultVotes holds the default value on creation for the votes field.
+	polloption.DefaultVotes = polloptionDescVotes.Default.(int)
 }

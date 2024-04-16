@@ -21,8 +21,41 @@ type User struct {
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
 	// Password holds the value of the "password" field.
-	Password     string `json:"password,omitempty"`
-	selectValues sql.SelectValues
+	Password string `json:"password,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges                UserEdges `json:"edges"`
+	poll_option_voted_by *int
+	selectValues         sql.SelectValues
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// Polls holds the value of the polls edge.
+	Polls []*Poll `json:"polls,omitempty"`
+	// Votes holds the value of the votes edge.
+	Votes []*Vote `json:"votes,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// PollsOrErr returns the Polls value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) PollsOrErr() ([]*Poll, error) {
+	if e.loadedTypes[0] {
+		return e.Polls, nil
+	}
+	return nil, &NotLoadedError{edge: "polls"}
+}
+
+// VotesOrErr returns the Votes value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) VotesOrErr() ([]*Vote, error) {
+	if e.loadedTypes[1] {
+		return e.Votes, nil
+	}
+	return nil, &NotLoadedError{edge: "votes"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -34,6 +67,8 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case user.FieldEmail, user.FieldName, user.FieldPassword:
 			values[i] = new(sql.NullString)
+		case user.ForeignKeys[0]: // poll_option_voted_by
+			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -73,6 +108,13 @@ func (u *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				u.Password = value.String
 			}
+		case user.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field poll_option_voted_by", value)
+			} else if value.Valid {
+				u.poll_option_voted_by = new(int)
+				*u.poll_option_voted_by = int(value.Int64)
+			}
 		default:
 			u.selectValues.Set(columns[i], values[i])
 		}
@@ -84,6 +126,16 @@ func (u *User) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (u *User) Value(name string) (ent.Value, error) {
 	return u.selectValues.Get(name)
+}
+
+// QueryPolls queries the "polls" edge of the User entity.
+func (u *User) QueryPolls() *PollQuery {
+	return NewUserClient(u.config).QueryPolls(u)
+}
+
+// QueryVotes queries the "votes" edge of the User entity.
+func (u *User) QueryVotes() *VoteQuery {
+	return NewUserClient(u.config).QueryVotes(u)
 }
 
 // Update returns a builder for updating this User.

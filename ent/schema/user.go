@@ -1,8 +1,9 @@
-// ent/schema/users.go
+// file: ent/schema/user.go
 package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
@@ -17,5 +18,13 @@ func (User) Fields() []ent.Field {
 		field.String("email").Unique(),
 		field.String("name"),
 		field.String("password"),
+	}
+}
+
+// Edges of the User.
+func (User) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("polls", Poll.Type), // Polls created by the user
+		edge.To("votes", Vote.Type), // Votes cast by the user
 	}
 }
