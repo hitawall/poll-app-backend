@@ -54,9 +54,30 @@ func init_db() {
 
 	// Create tables
 	// Replace this SQL command with your actual table creation command
-	_, err = dbNew.Exec("CREATE TABLE IF NOT EXISTS users(email TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, password TEXT NOT NULL)")
+	_, err = dbNew.Exec("CREATE TABLE IF NOT EXISTS users(id SERIAL PRIMARY KEY, email VARCHAR(255) UNIQUE NOT NULL, name VARCHAR(255) NOT NULL, password VARCHAR(255) NOT NULL)")
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Table created successfully")
+	fmt.Println("Users Table created successfully")
+
+	// Replace this SQL command with your actual table creation command
+	_, err = dbNew.Exec("CREATE TABLE IF NOT EXISTS polls(id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL, creator_id INTEGER NOT NULL, FOREIGN KEY (creator_id) REFERENCES users(id))")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Polls Table created successfully")
+
+	// Replace this SQL command with your actual table creation command
+	_, err = dbNew.Exec("CREATE TABLE IF NOT EXISTS polloptions(id SERIAL PRIMARY KEY, text VARCHAR(255) NOT NULL, votes INTEGER DEFAULT 0, poll_id INTEGER NOT NULL, FOREIGN KEY (poll_id) REFERENCES polls(id))")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Poll Options Table created successfully")
+
+	// Replace this SQL command with your actual table creation command
+	_, err = dbNew.Exec("CREATE TABLE IF NOT EXISTS votes(id SERIAL PRIMARY KEY, voted_on TIMESTAMP NOT NULL, user_id INTEGER NOT NULL, polloption_id INTEGER NOT NULL, FOREIGN KEY (user_id) REFERENCES users(id), FOREIGN KEY (polloption_id) REFERENCES polloptions(id), UNIQUE (user_id, polloption_id))")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Votes Table created successfully")
 }
