@@ -12,13 +12,12 @@ import (
 )
 
 func main() {
-	// Initialize ent client
 	client, err := ent.Open("postgres", "host=localhost port=5432 user=postgres password=password dbname=poll_app sslmode=disable")
 	if err != nil {
-		log.Fatalf("failed opening connection to sqlite: %v", err)
+		log.Fatalf("failed opening connection to postgres: %v", err)
 	}
 	defer client.Close()
-	// Run the auto migration tool.
+
 	if err := client.Schema.Create(context.Background()); err != nil {
 		log.Fatalf("failed creating schema resources: %v", err)
 	}
@@ -33,7 +32,15 @@ func main() {
 	router.GET("/options/:id/voters", handlers.GetVoters(client))
 	router.PUT("/options/:id", handlers.UpdateOption(client))
 
-	handler := cors.Default().Handler(router)
+	// Setup CORS to allow specific origins and methods
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"}, // Only allow frontend to connect
+		AllowCredentials: true,                              // Allow credentials
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type"}, // You might need to adjust these headers depending on your application needs
+		ExposedHeaders:   []string{"X-Custom-Header"},               // Example of exposing custom headers
+	})
 
+	handler := c.Handler(router)
 	log.Fatal(http.ListenAndServe(":8080", handler))
 }
