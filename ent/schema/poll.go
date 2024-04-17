@@ -1,4 +1,4 @@
-// file: ent/schema/poll.go
+// file: ent/schema/pollhandlers.go
 
 package schema
 

@@ -26,6 +26,12 @@ func main() {
 	router := httprouter.New()
 	router.POST("/login", handlers.LoginHandler(client))
 	router.POST("/signup", handlers.SignupHandler(client))
+	router.POST("/polls", handlers.CreatePoll(client))
+	router.POST("/polls/:id/options", handlers.AddOption(client))
+	router.POST("/options/:id/vote", handlers.VoteOption(client))
+	router.GET("/polls", handlers.GetPolls(client))
+	router.GET("/options/:id/voters", handlers.GetVoters(client))
+	router.PUT("/options/:id", handlers.UpdateOption(client))
 
 	handler := cors.Default().Handler(router)
 
