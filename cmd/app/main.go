@@ -25,20 +25,20 @@ func main() {
 	router := httprouter.New()
 	router.POST("/login", handlers.LoginHandler(client))
 	router.POST("/signup", handlers.SignupHandler(client))
-	router.POST("/polls", handlers.CreatePoll(client))
-	router.POST("/polls/:id/options", handlers.AddOption(client))
-	router.POST("/options/:id/vote", handlers.VoteOption(client))
-	router.GET("/polls", handlers.GetPolls(client))
-	router.GET("/options/:id/voters", handlers.GetVoters(client))
-	router.PUT("/options/:id", handlers.UpdateOption(client))
 
-	// Setup CORS to allow specific origins and methods
+	// Apply authentication middleware only to these routes
+	router.POST("/polls", handlers.AuthMiddleware(handlers.CreatePoll(client)))
+	router.POST("/polls/:id/options", handlers.AuthMiddleware(handlers.AddOption(client)))
+	router.POST("/options/:id/vote", handlers.AuthMiddleware(handlers.VoteOption(client)))
+	router.GET("/polls", handlers.AuthMiddleware(handlers.GetPolls(client)))
+	router.GET("/options/:id/voters", handlers.AuthMiddleware(handlers.GetVoters(client)))
+	router.PUT("/options/:id", handlers.AuthMiddleware(handlers.UpdateOption(client)))
+
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"}, // Only allow frontend to connect
-		AllowCredentials: true,                              // Allow credentials
+		AllowedOrigins:   []string{"http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Authorization", "Content-Type"}, // You might need to adjust these headers depending on your application needs
-		ExposedHeaders:   []string{"X-Custom-Header"},               // Example of exposing custom headers
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowCredentials: true,
 	})
 
 	handler := c.Handler(router)

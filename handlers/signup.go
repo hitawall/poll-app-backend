@@ -52,7 +52,6 @@ func SignupHandler(client *ent.Client) httprouter.Handle {
 			log.Error("Error creating user: ", err)
 			return
 		}
-
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]string{"message": "User created successfully"})

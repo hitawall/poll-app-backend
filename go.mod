@@ -4,6 +4,7 @@ go 1.22.1
 
 require (
 	entgo.io/ent v0.13.1
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lib/pq v1.10.9
