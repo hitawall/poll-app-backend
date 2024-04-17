@@ -19,7 +19,7 @@ func AuthMiddleware(next httprouter.Handle) httprouter.Handle {
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return []byte("YourSecretKey"), nil
+			return []byte("JWT_SECRET_KEY"), nil
 		})
 
 		if err != nil || !token.Valid {
