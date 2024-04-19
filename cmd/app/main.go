@@ -27,12 +27,13 @@ func main() {
 	router.POST("/signup", handlers.SignupHandler(client))
 
 	// Apply authentication middleware only to these routes
-	router.POST("/polls", handlers.AuthMiddleware(handlers.CreatePoll(client)))
-	router.POST("/polls/:id/options", handlers.AuthMiddleware(handlers.AddOption(client)))
-	router.POST("/options/:id/vote", handlers.AuthMiddleware(handlers.VoteOption(client)))
-	router.GET("/polls", handlers.AuthMiddleware(handlers.GetPolls(client)))
-	router.GET("/options/:id/voters", handlers.AuthMiddleware(handlers.GetVoters(client)))
-	router.PUT("/options/:id", handlers.AuthMiddleware(handlers.UpdateOption(client)))
+	router.POST("/polls", handlers.AuthMiddleware(client, handlers.CreatePoll(client)))
+	router.GET("/polls/:id", handlers.AuthMiddleware(client, handlers.GetPoll(client)))
+	router.POST("/polls/:id/options", handlers.AuthMiddleware(client, handlers.AddOption(client)))
+	router.POST("/options/:id/vote", handlers.AuthMiddleware(client, handlers.VoteOption(client)))
+	router.GET("/polls", handlers.AuthMiddleware(client, handlers.GetPolls(client)))
+	router.GET("/options/:id/voters", handlers.AuthMiddleware(client, handlers.GetVoters(client)))
+	router.PUT("/options/:id", handlers.AuthMiddleware(client, handlers.UpdateOption(client)))
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000"},
