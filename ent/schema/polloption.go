@@ -1,5 +1,4 @@
 // file: ent/schema/polloption.go
-
 package schema
 
 import (
@@ -8,7 +7,7 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-// Option holds the schema definition for the Option entity.
+// PollOption holds the schema definition for the Option entity.
 type PollOption struct {
 	ent.Schema
 }

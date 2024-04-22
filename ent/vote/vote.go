@@ -28,7 +28,7 @@ const (
 	// UserColumn is the table column denoting the user relation/edge.
 	UserColumn = "user_votes"
 	// PolloptionTable is the table that holds the polloption relation/edge.
-	PolloptionTable = "poll_options"
+	PolloptionTable = "votes"
 	// PolloptionInverseTable is the table name for the PollOption entity.
 	// It exists in this package in order to avoid circular dependency with the "polloption" package.
 	PolloptionInverseTable = "poll_options"
@@ -46,6 +46,7 @@ var Columns = []string{
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"user_votes",
+	"vote_polloption",
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -83,17 +84,10 @@ func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
-// ByPolloptionCount orders the results by polloption count.
-func ByPolloptionCount(opts ...sql.OrderTermOption) OrderOption {
+// ByPolloptionField orders the results by polloption field.
+func ByPolloptionField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newPolloptionStep(), opts...)
-	}
-}
-
-// ByPolloption orders the results by polloption terms.
-func ByPolloption(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newPolloptionStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newPolloptionStep(), sql.OrderByField(field, opts...))
 	}
 }
 func newUserStep() *sqlgraph.Step {
@@ -107,6 +101,6 @@ func newPolloptionStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PolloptionInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, PolloptionTable, PolloptionColumn),
+		sqlgraph.Edge(sqlgraph.M2O, false, PolloptionTable, PolloptionColumn),
 	)
 }

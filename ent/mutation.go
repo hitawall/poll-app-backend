@@ -1699,8 +1699,7 @@ type VoteMutation struct {
 	clearedFields     map[string]struct{}
 	user              *int
 	cleareduser       bool
-	polloption        map[int]struct{}
-	removedpolloption map[int]struct{}
+	polloption        *int
 	clearedpolloption bool
 	done              bool
 	oldValue          func(context.Context) (*Vote, error)
@@ -1880,14 +1879,9 @@ func (m *VoteMutation) ResetUser() {
 	m.cleareduser = false
 }
 
-// AddPolloptionIDs adds the "polloption" edge to the PollOption entity by ids.
-func (m *VoteMutation) AddPolloptionIDs(ids ...int) {
-	if m.polloption == nil {
-		m.polloption = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.polloption[ids[i]] = struct{}{}
-	}
+// SetPolloptionID sets the "polloption" edge to the PollOption entity by id.
+func (m *VoteMutation) SetPolloptionID(id int) {
+	m.polloption = &id
 }
 
 // ClearPolloption clears the "polloption" edge to the PollOption entity.
@@ -1900,29 +1894,20 @@ func (m *VoteMutation) PolloptionCleared() bool {
 	return m.clearedpolloption
 }
 
-// RemovePolloptionIDs removes the "polloption" edge to the PollOption entity by IDs.
-func (m *VoteMutation) RemovePolloptionIDs(ids ...int) {
-	if m.removedpolloption == nil {
-		m.removedpolloption = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.polloption, ids[i])
-		m.removedpolloption[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedPolloption returns the removed IDs of the "polloption" edge to the PollOption entity.
-func (m *VoteMutation) RemovedPolloptionIDs() (ids []int) {
-	for id := range m.removedpolloption {
-		ids = append(ids, id)
+// PolloptionID returns the "polloption" edge ID in the mutation.
+func (m *VoteMutation) PolloptionID() (id int, exists bool) {
+	if m.polloption != nil {
+		return *m.polloption, true
 	}
 	return
 }
 
 // PolloptionIDs returns the "polloption" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// PolloptionID instead. It exists only for internal usage by the builders.
 func (m *VoteMutation) PolloptionIDs() (ids []int) {
-	for id := range m.polloption {
-		ids = append(ids, id)
+	if id := m.polloption; id != nil {
+		ids = append(ids, *id)
 	}
 	return
 }
@@ -1931,7 +1916,6 @@ func (m *VoteMutation) PolloptionIDs() (ids []int) {
 func (m *VoteMutation) ResetPolloption() {
 	m.polloption = nil
 	m.clearedpolloption = false
-	m.removedpolloption = nil
 }
 
 // Where appends a list predicates to the VoteMutation builder.
@@ -2086,11 +2070,9 @@ func (m *VoteMutation) AddedIDs(name string) []ent.Value {
 			return []ent.Value{*id}
 		}
 	case vote.EdgePolloption:
-		ids := make([]ent.Value, 0, len(m.polloption))
-		for id := range m.polloption {
-			ids = append(ids, id)
+		if id := m.polloption; id != nil {
+			return []ent.Value{*id}
 		}
-		return ids
 	}
 	return nil
 }
@@ -2098,23 +2080,12 @@ func (m *VoteMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *VoteMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 2)
-	if m.removedpolloption != nil {
-		edges = append(edges, vote.EdgePolloption)
-	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *VoteMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case vote.EdgePolloption:
-		ids := make([]ent.Value, 0, len(m.removedpolloption))
-		for id := range m.removedpolloption {
-			ids = append(ids, id)
-		}
-		return ids
-	}
 	return nil
 }
 
@@ -2148,6 +2119,9 @@ func (m *VoteMutation) ClearEdge(name string) error {
 	switch name {
 	case vote.EdgeUser:
 		m.ClearUser()
+		return nil
+	case vote.EdgePolloption:
+		m.ClearPolloption()
 		return nil
 	}
 	return fmt.Errorf("unknown Vote unique edge %s", name)

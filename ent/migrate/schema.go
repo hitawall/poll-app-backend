@@ -34,7 +34,6 @@ var (
 		{Name: "text", Type: field.TypeString},
 		{Name: "votes", Type: field.TypeInt, Default: 0},
 		{Name: "poll_polloptions", Type: field.TypeInt, Nullable: true},
-		{Name: "vote_polloption", Type: field.TypeInt, Nullable: true},
 	}
 	// PollOptionsTable holds the schema information for the "poll_options" table.
 	PollOptionsTable = &schema.Table{
@@ -46,12 +45,6 @@ var (
 				Symbol:     "poll_options_polls_polloptions",
 				Columns:    []*schema.Column{PollOptionsColumns[3]},
 				RefColumns: []*schema.Column{PollsColumns[0]},
-				OnDelete:   schema.SetNull,
-			},
-			{
-				Symbol:     "poll_options_votes_polloption",
-				Columns:    []*schema.Column{PollOptionsColumns[4]},
-				RefColumns: []*schema.Column{VotesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 		},
@@ -83,6 +76,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "voted_on", Type: field.TypeTime},
 		{Name: "user_votes", Type: field.TypeInt, Nullable: true},
+		{Name: "vote_polloption", Type: field.TypeInt},
 	}
 	// VotesTable holds the schema information for the "votes" table.
 	VotesTable = &schema.Table{
@@ -95,6 +89,12 @@ var (
 				Columns:    []*schema.Column{VotesColumns[2]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "votes_poll_options_polloption",
+				Columns:    []*schema.Column{VotesColumns[3]},
+				RefColumns: []*schema.Column{PollOptionsColumns[0]},
+				OnDelete:   schema.NoAction,
 			},
 		},
 	}
@@ -110,7 +110,7 @@ var (
 func init() {
 	PollsTable.ForeignKeys[0].RefTable = UsersTable
 	PollOptionsTable.ForeignKeys[0].RefTable = PollsTable
-	PollOptionsTable.ForeignKeys[1].RefTable = VotesTable
 	UsersTable.ForeignKeys[0].RefTable = PollOptionsTable
 	VotesTable.ForeignKeys[0].RefTable = UsersTable
+	VotesTable.ForeignKeys[1].RefTable = PollOptionsTable
 }

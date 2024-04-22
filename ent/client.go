@@ -855,7 +855,7 @@ func (c *VoteClient) QueryPolloption(v *Vote) *PollOptionQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(vote.Table, vote.FieldID, id),
 			sqlgraph.To(polloption.Table, polloption.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, vote.PolloptionTable, vote.PolloptionColumn),
+			sqlgraph.Edge(sqlgraph.M2O, false, vote.PolloptionTable, vote.PolloptionColumn),
 		)
 		fromV = sqlgraph.Neighbors(v.driver.Dialect(), step)
 		return fromV, nil
