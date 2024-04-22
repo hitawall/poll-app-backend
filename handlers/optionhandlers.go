@@ -135,3 +135,50 @@ func UpdateOption(client *ent.Client) httprouter.Handle {
 		respondJSON(w, updatedOption, http.StatusOK)
 	}
 }
+
+func DeleteOption(client *ent.Client) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		optionID, err := strconv.Atoi(ps.ByName("id"))
+		if err != nil {
+			http.Error(w, "Invalid option ID", http.StatusBadRequest)
+			return
+		}
+
+		user, ok := r.Context().Value("user").(*ent.User)
+		if !ok {
+			http.Error(w, "Authentication required", http.StatusUnauthorized)
+			return
+		}
+
+		// Fetch the option along with its associated poll and the poll's creator
+		opt, err := client.PollOption.
+			Query().
+			Where(polloption.IDEQ(optionID)).
+			WithPoll(func(q *ent.PollQuery) {
+				q.WithCreator()
+			}).
+			Only(r.Context())
+		if err != nil {
+			http.Error(w, "Failed to fetch option", http.StatusInternalServerError)
+			return
+		}
+
+		// Check if the current user is the creator of the poll
+		if opt.Edges.Poll == nil || opt.Edges.Poll.Edges.Creator == nil || opt.Edges.Poll.Edges.Creator.ID != user.ID {
+			http.Error(w, "Unauthorized to delete this option", http.StatusUnauthorized)
+			return
+		}
+
+		// Proceed to delete the option
+		err = client.PollOption.
+			DeleteOneID(optionID).
+			Exec(r.Context())
+		if err != nil {
+			http.Error(w, "Failed to delete option", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Option deleted successfully"))
+	}
+}

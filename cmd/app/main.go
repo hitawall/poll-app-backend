@@ -34,6 +34,7 @@ func main() {
 	router.GET("/polls", handlers.AuthMiddleware(client, handlers.GetPolls(client)))
 	router.GET("/options/:id/voters", handlers.AuthMiddleware(client, handlers.GetVoters(client)))
 	router.PUT("/options/:id", handlers.AuthMiddleware(client, handlers.UpdateOption(client)))
+	router.DELETE("/options/:id", handlers.AuthMiddleware(client, handlers.DeleteOption(client)))
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000"},
