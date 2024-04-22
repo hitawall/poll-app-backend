@@ -11,7 +11,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// AddOption adds an option to a specific poll, with check that only the poll creator can add options
 func AddOption(client *ent.Client) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		pollID, err := strconv.Atoi(ps.ByName("id"))
@@ -20,7 +19,11 @@ func AddOption(client *ent.Client) httprouter.Handle {
 			return
 		}
 
-		userID, _ := strconv.Atoi(r.Header.Get("X-User-ID")) // Assuming user ID is passed in the header
+		user, ok := r.Context().Value("user").(*ent.User)
+		if !ok {
+			http.Error(w, "Authentication required", http.StatusUnauthorized)
+			return
+		}
 
 		var req struct {
 			Text string `json:"text"`
@@ -42,7 +45,7 @@ func AddOption(client *ent.Client) httprouter.Handle {
 		}
 
 		// Check if the current user is the creator of the poll
-		if p.Edges.Creator != nil && p.Edges.Creator.ID != userID {
+		if p.Edges.Creator != nil && p.Edges.Creator.ID != user.ID {
 			http.Error(w, "Unauthorized to add options to this poll", http.StatusUnauthorized)
 			return
 		}
@@ -80,7 +83,6 @@ func GetVoters(client *ent.Client) httprouter.Handle {
 	}
 }
 
-// UpdateOption updates an existing option and resets its votes if the text is modified
 func UpdateOption(client *ent.Client) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		optionID, err := strconv.Atoi(ps.ByName("id"))
@@ -89,7 +91,11 @@ func UpdateOption(client *ent.Client) httprouter.Handle {
 			return
 		}
 
-		userID, _ := strconv.Atoi(r.Header.Get("X-User-ID")) // Assuming user ID is passed in the header
+		user, ok := r.Context().Value("user").(*ent.User)
+		if !ok {
+			http.Error(w, "Authentication required", http.StatusUnauthorized)
+			return
+		}
 
 		var req struct {
 			Text string `json:"text"`
@@ -99,28 +105,27 @@ func UpdateOption(client *ent.Client) httprouter.Handle {
 			return
 		}
 
-		// Fetch the option along with its poll to verify the creator
 		opt, err := client.PollOption.
 			Query().
 			Where(polloption.IDEQ(optionID)).
-			WithPoll().
+			WithPoll(func(q *ent.PollQuery) {
+				q.WithCreator()
+			}).
 			Only(r.Context())
 		if err != nil {
 			http.Error(w, "Failed to fetch option", http.StatusInternalServerError)
 			return
 		}
 
-		// Check if the current user is the creator of the poll
-		if opt.Edges.Poll != nil && opt.Edges.Poll.QueryCreator().OnlyIDX(r.Context()) != userID {
+		if opt.Edges.Poll != nil && opt.Edges.Poll.Edges.Creator.ID != user.ID {
 			http.Error(w, "Unauthorized to update this option", http.StatusUnauthorized)
 			return
 		}
 
-		// Update the option and reset votes if the text has changed
 		updatedOption, err := client.PollOption.
 			UpdateOne(opt).
 			SetText(req.Text).
-			SetVotes(0). // Reset votes
+			ClearVotedBy(). // This removes all voter connections if the text changes
 			Save(r.Context())
 		if err != nil {
 			http.Error(w, "Failed to update option", http.StatusInternalServerError)
