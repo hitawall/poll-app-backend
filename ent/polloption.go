@@ -25,6 +25,7 @@ type PollOption struct {
 	// The values are being populated by the PollOptionQuery when eager-loading is set.
 	Edges            PollOptionEdges `json:"edges"`
 	poll_polloptions *int
+	vote_polloption  *int
 	selectValues     sql.SelectValues
 }
 
@@ -70,6 +71,8 @@ func (*PollOption) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case polloption.ForeignKeys[0]: // poll_polloptions
 			values[i] = new(sql.NullInt64)
+		case polloption.ForeignKeys[1]: // vote_polloption
+			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -109,6 +112,13 @@ func (po *PollOption) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				po.poll_polloptions = new(int)
 				*po.poll_polloptions = int(value.Int64)
+			}
+		case polloption.ForeignKeys[1]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field vote_polloption", value)
+			} else if value.Valid {
+				po.vote_polloption = new(int)
+				*po.vote_polloption = int(value.Int64)
 			}
 		default:
 			po.selectValues.Set(columns[i], values[i])

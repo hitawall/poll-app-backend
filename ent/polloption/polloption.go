@@ -49,6 +49,7 @@ var Columns = []string{
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"poll_polloptions",
+	"vote_polloption",
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

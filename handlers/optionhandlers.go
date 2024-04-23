@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"poll-app-backend/ent"
 	"poll-app-backend/ent/poll"
@@ -65,21 +66,64 @@ func AddOption(client *ent.Client) httprouter.Handle {
 	}
 }
 
-// GetVoters lists all users who voted for a specific option
 func GetVoters(client *ent.Client) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		optionID, _ := strconv.Atoi(ps.ByName("id"))
+		optionID, err := strconv.Atoi(ps.ByName("id"))
+		if err != nil {
+			http.Error(w, "Invalid option ID", http.StatusBadRequest)
+			return
+		}
+		log.Printf("Option ID: %d", optionID)
+
+		user, ok := r.Context().Value("user").(*ent.User)
+		if !ok {
+			http.Error(w, "Authentication required", http.StatusUnauthorized)
+			return
+		}
+
 		option, err := client.PollOption.
 			Query().
 			Where(polloption.IDEQ(optionID)).
 			WithVotedBy().
 			Only(r.Context())
+
+		log.Printf("Option retrieved: %s", option)
 		if err != nil {
+			log.Printf("Error retrieving poll option: %v", err)
 			http.Error(w, "Failed to retrieve voters", http.StatusInternalServerError)
 			return
 		}
-		voters := option.QueryVotedBy().AllX(r.Context())
-		respondJSON(w, voters, http.StatusOK)
+
+		voters, err := option.QueryVotedBy().All(r.Context())
+
+		if err != nil {
+			log.Printf("Error querying voters: %v", err)
+			http.Error(w, "Failed to retrieve voters", http.StatusInternalServerError)
+			return
+		}
+		log.Printf("Found %d voters for option ID: %d", len(voters), optionID)
+
+		log.Printf("Voters retrieved: %s", voters)
+
+		hasVoted := false
+		for _, voter := range voters {
+			if voter.ID == user.ID {
+				hasVoted = true
+				break
+			}
+		}
+
+		response := struct {
+			Voters   []*ent.User `json:"voters"`
+			HasVoted bool        `json:"hasVoted"`
+		}{
+			Voters:   voters,
+			HasVoted: hasVoted,
+		}
+
+		log.Printf("Response of getvoters: %s", response)
+
+		respondJSON(w, response, http.StatusOK)
 	}
 }
 

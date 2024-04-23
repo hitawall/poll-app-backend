@@ -31,13 +31,11 @@ const (
 	PollsInverseTable = "polls"
 	// PollsColumn is the table column denoting the polls relation/edge.
 	PollsColumn = "user_polls"
-	// VotesTable is the table that holds the votes relation/edge.
-	VotesTable = "votes"
+	// VotesTable is the table that holds the votes relation/edge. The primary key declared below.
+	VotesTable = "user_votes"
 	// VotesInverseTable is the table name for the Vote entity.
 	// It exists in this package in order to avoid circular dependency with the "vote" package.
 	VotesInverseTable = "votes"
-	// VotesColumn is the table column denoting the votes relation/edge.
-	VotesColumn = "user_votes"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -53,6 +51,12 @@ var Columns = []string{
 var ForeignKeys = []string{
 	"poll_option_voted_by",
 }
+
+var (
+	// VotesPrimaryKey and VotesColumn2 are the table columns denoting the
+	// primary key for the votes relation (M2M).
+	VotesPrimaryKey = []string{"user_id", "vote_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -130,6 +134,6 @@ func newVotesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(VotesInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, VotesTable, VotesColumn),
+		sqlgraph.Edge(sqlgraph.M2M, false, VotesTable, VotesPrimaryKey...),
 	)
 }

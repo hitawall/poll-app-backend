@@ -690,7 +690,7 @@ func (c *UserClient) QueryVotes(u *User) *VoteQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(vote.Table, vote.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, user.VotesTable, user.VotesColumn),
+			sqlgraph.Edge(sqlgraph.M2M, false, user.VotesTable, user.VotesPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
 		return fromV, nil
@@ -839,7 +839,7 @@ func (c *VoteClient) QueryUser(v *Vote) *UserQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(vote.Table, vote.FieldID, id),
 			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, vote.UserTable, vote.UserColumn),
+			sqlgraph.Edge(sqlgraph.M2M, true, vote.UserTable, vote.UserPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(v.driver.Dialect(), step)
 		return fromV, nil
@@ -855,7 +855,7 @@ func (c *VoteClient) QueryPolloption(v *Vote) *PollOptionQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(vote.Table, vote.FieldID, id),
 			sqlgraph.To(polloption.Table, polloption.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, vote.PolloptionTable, vote.PolloptionColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, vote.PolloptionTable, vote.PolloptionColumn),
 		)
 		fromV = sqlgraph.Neighbors(v.driver.Dialect(), step)
 		return fromV, nil

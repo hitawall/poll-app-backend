@@ -29,34 +29,34 @@ func (vu *VoteUpdate) Where(ps ...predicate.Vote) *VoteUpdate {
 	return vu
 }
 
-// SetUserID sets the "user" edge to the User entity by ID.
-func (vu *VoteUpdate) SetUserID(id int) *VoteUpdate {
-	vu.mutation.SetUserID(id)
+// AddUserIDs adds the "user" edge to the User entity by IDs.
+func (vu *VoteUpdate) AddUserIDs(ids ...int) *VoteUpdate {
+	vu.mutation.AddUserIDs(ids...)
 	return vu
 }
 
-// SetNillableUserID sets the "user" edge to the User entity by ID if the given value is not nil.
-func (vu *VoteUpdate) SetNillableUserID(id *int) *VoteUpdate {
-	if id != nil {
-		vu = vu.SetUserID(*id)
+// AddUser adds the "user" edges to the User entity.
+func (vu *VoteUpdate) AddUser(u ...*User) *VoteUpdate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
 	}
+	return vu.AddUserIDs(ids...)
+}
+
+// AddPolloptionIDs adds the "polloption" edge to the PollOption entity by IDs.
+func (vu *VoteUpdate) AddPolloptionIDs(ids ...int) *VoteUpdate {
+	vu.mutation.AddPolloptionIDs(ids...)
 	return vu
 }
 
-// SetUser sets the "user" edge to the User entity.
-func (vu *VoteUpdate) SetUser(u *User) *VoteUpdate {
-	return vu.SetUserID(u.ID)
-}
-
-// SetPolloptionID sets the "polloption" edge to the PollOption entity by ID.
-func (vu *VoteUpdate) SetPolloptionID(id int) *VoteUpdate {
-	vu.mutation.SetPolloptionID(id)
-	return vu
-}
-
-// SetPolloption sets the "polloption" edge to the PollOption entity.
-func (vu *VoteUpdate) SetPolloption(p *PollOption) *VoteUpdate {
-	return vu.SetPolloptionID(p.ID)
+// AddPolloption adds the "polloption" edges to the PollOption entity.
+func (vu *VoteUpdate) AddPolloption(p ...*PollOption) *VoteUpdate {
+	ids := make([]int, len(p))
+	for i := range p {
+		ids[i] = p[i].ID
+	}
+	return vu.AddPolloptionIDs(ids...)
 }
 
 // Mutation returns the VoteMutation object of the builder.
@@ -64,16 +64,46 @@ func (vu *VoteUpdate) Mutation() *VoteMutation {
 	return vu.mutation
 }
 
-// ClearUser clears the "user" edge to the User entity.
+// ClearUser clears all "user" edges to the User entity.
 func (vu *VoteUpdate) ClearUser() *VoteUpdate {
 	vu.mutation.ClearUser()
 	return vu
 }
 
-// ClearPolloption clears the "polloption" edge to the PollOption entity.
+// RemoveUserIDs removes the "user" edge to User entities by IDs.
+func (vu *VoteUpdate) RemoveUserIDs(ids ...int) *VoteUpdate {
+	vu.mutation.RemoveUserIDs(ids...)
+	return vu
+}
+
+// RemoveUser removes "user" edges to User entities.
+func (vu *VoteUpdate) RemoveUser(u ...*User) *VoteUpdate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return vu.RemoveUserIDs(ids...)
+}
+
+// ClearPolloption clears all "polloption" edges to the PollOption entity.
 func (vu *VoteUpdate) ClearPolloption() *VoteUpdate {
 	vu.mutation.ClearPolloption()
 	return vu
+}
+
+// RemovePolloptionIDs removes the "polloption" edge to PollOption entities by IDs.
+func (vu *VoteUpdate) RemovePolloptionIDs(ids ...int) *VoteUpdate {
+	vu.mutation.RemovePolloptionIDs(ids...)
+	return vu
+}
+
+// RemovePolloption removes "polloption" edges to PollOption entities.
+func (vu *VoteUpdate) RemovePolloption(p ...*PollOption) *VoteUpdate {
+	ids := make([]int, len(p))
+	for i := range p {
+		ids[i] = p[i].ID
+	}
+	return vu.RemovePolloptionIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -103,18 +133,7 @@ func (vu *VoteUpdate) ExecX(ctx context.Context) {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (vu *VoteUpdate) check() error {
-	if _, ok := vu.mutation.PolloptionID(); vu.mutation.PolloptionCleared() && !ok {
-		return errors.New(`ent: clearing a required unique edge "Vote.polloption"`)
-	}
-	return nil
-}
-
 func (vu *VoteUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	if err := vu.check(); err != nil {
-		return n, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(vote.Table, vote.Columns, sqlgraph.NewFieldSpec(vote.FieldID, field.TypeInt))
 	if ps := vu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -125,10 +144,10 @@ func (vu *VoteUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if vu.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.M2M,
 			Inverse: true,
 			Table:   vote.UserTable,
-			Columns: []string{vote.UserColumn},
+			Columns: vote.UserPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
@@ -136,12 +155,28 @@ func (vu *VoteUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := vu.mutation.UserIDs(); len(nodes) > 0 {
+	if nodes := vu.mutation.RemovedUserIDs(); len(nodes) > 0 && !vu.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.M2M,
 			Inverse: true,
 			Table:   vote.UserTable,
-			Columns: []string{vote.UserColumn},
+			Columns: vote.UserPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := vu.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   vote.UserTable,
+			Columns: vote.UserPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
@@ -154,7 +189,7 @@ func (vu *VoteUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if vu.mutation.PolloptionCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   vote.PolloptionTable,
 			Columns: []string{vote.PolloptionColumn},
@@ -165,9 +200,25 @@ func (vu *VoteUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
+	if nodes := vu.mutation.RemovedPolloptionIDs(); len(nodes) > 0 && !vu.mutation.PolloptionCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   vote.PolloptionTable,
+			Columns: []string{vote.PolloptionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(polloption.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
 	if nodes := vu.mutation.PolloptionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   vote.PolloptionTable,
 			Columns: []string{vote.PolloptionColumn},
@@ -201,34 +252,34 @@ type VoteUpdateOne struct {
 	mutation *VoteMutation
 }
 
-// SetUserID sets the "user" edge to the User entity by ID.
-func (vuo *VoteUpdateOne) SetUserID(id int) *VoteUpdateOne {
-	vuo.mutation.SetUserID(id)
+// AddUserIDs adds the "user" edge to the User entity by IDs.
+func (vuo *VoteUpdateOne) AddUserIDs(ids ...int) *VoteUpdateOne {
+	vuo.mutation.AddUserIDs(ids...)
 	return vuo
 }
 
-// SetNillableUserID sets the "user" edge to the User entity by ID if the given value is not nil.
-func (vuo *VoteUpdateOne) SetNillableUserID(id *int) *VoteUpdateOne {
-	if id != nil {
-		vuo = vuo.SetUserID(*id)
+// AddUser adds the "user" edges to the User entity.
+func (vuo *VoteUpdateOne) AddUser(u ...*User) *VoteUpdateOne {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
 	}
+	return vuo.AddUserIDs(ids...)
+}
+
+// AddPolloptionIDs adds the "polloption" edge to the PollOption entity by IDs.
+func (vuo *VoteUpdateOne) AddPolloptionIDs(ids ...int) *VoteUpdateOne {
+	vuo.mutation.AddPolloptionIDs(ids...)
 	return vuo
 }
 
-// SetUser sets the "user" edge to the User entity.
-func (vuo *VoteUpdateOne) SetUser(u *User) *VoteUpdateOne {
-	return vuo.SetUserID(u.ID)
-}
-
-// SetPolloptionID sets the "polloption" edge to the PollOption entity by ID.
-func (vuo *VoteUpdateOne) SetPolloptionID(id int) *VoteUpdateOne {
-	vuo.mutation.SetPolloptionID(id)
-	return vuo
-}
-
-// SetPolloption sets the "polloption" edge to the PollOption entity.
-func (vuo *VoteUpdateOne) SetPolloption(p *PollOption) *VoteUpdateOne {
-	return vuo.SetPolloptionID(p.ID)
+// AddPolloption adds the "polloption" edges to the PollOption entity.
+func (vuo *VoteUpdateOne) AddPolloption(p ...*PollOption) *VoteUpdateOne {
+	ids := make([]int, len(p))
+	for i := range p {
+		ids[i] = p[i].ID
+	}
+	return vuo.AddPolloptionIDs(ids...)
 }
 
 // Mutation returns the VoteMutation object of the builder.
@@ -236,16 +287,46 @@ func (vuo *VoteUpdateOne) Mutation() *VoteMutation {
 	return vuo.mutation
 }
 
-// ClearUser clears the "user" edge to the User entity.
+// ClearUser clears all "user" edges to the User entity.
 func (vuo *VoteUpdateOne) ClearUser() *VoteUpdateOne {
 	vuo.mutation.ClearUser()
 	return vuo
 }
 
-// ClearPolloption clears the "polloption" edge to the PollOption entity.
+// RemoveUserIDs removes the "user" edge to User entities by IDs.
+func (vuo *VoteUpdateOne) RemoveUserIDs(ids ...int) *VoteUpdateOne {
+	vuo.mutation.RemoveUserIDs(ids...)
+	return vuo
+}
+
+// RemoveUser removes "user" edges to User entities.
+func (vuo *VoteUpdateOne) RemoveUser(u ...*User) *VoteUpdateOne {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
+	}
+	return vuo.RemoveUserIDs(ids...)
+}
+
+// ClearPolloption clears all "polloption" edges to the PollOption entity.
 func (vuo *VoteUpdateOne) ClearPolloption() *VoteUpdateOne {
 	vuo.mutation.ClearPolloption()
 	return vuo
+}
+
+// RemovePolloptionIDs removes the "polloption" edge to PollOption entities by IDs.
+func (vuo *VoteUpdateOne) RemovePolloptionIDs(ids ...int) *VoteUpdateOne {
+	vuo.mutation.RemovePolloptionIDs(ids...)
+	return vuo
+}
+
+// RemovePolloption removes "polloption" edges to PollOption entities.
+func (vuo *VoteUpdateOne) RemovePolloption(p ...*PollOption) *VoteUpdateOne {
+	ids := make([]int, len(p))
+	for i := range p {
+		ids[i] = p[i].ID
+	}
+	return vuo.RemovePolloptionIDs(ids...)
 }
 
 // Where appends a list predicates to the VoteUpdate builder.
@@ -288,18 +369,7 @@ func (vuo *VoteUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (vuo *VoteUpdateOne) check() error {
-	if _, ok := vuo.mutation.PolloptionID(); vuo.mutation.PolloptionCleared() && !ok {
-		return errors.New(`ent: clearing a required unique edge "Vote.polloption"`)
-	}
-	return nil
-}
-
 func (vuo *VoteUpdateOne) sqlSave(ctx context.Context) (_node *Vote, err error) {
-	if err := vuo.check(); err != nil {
-		return _node, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(vote.Table, vote.Columns, sqlgraph.NewFieldSpec(vote.FieldID, field.TypeInt))
 	id, ok := vuo.mutation.ID()
 	if !ok {
@@ -327,10 +397,10 @@ func (vuo *VoteUpdateOne) sqlSave(ctx context.Context) (_node *Vote, err error) 
 	}
 	if vuo.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.M2M,
 			Inverse: true,
 			Table:   vote.UserTable,
-			Columns: []string{vote.UserColumn},
+			Columns: vote.UserPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
@@ -338,12 +408,28 @@ func (vuo *VoteUpdateOne) sqlSave(ctx context.Context) (_node *Vote, err error) 
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := vuo.mutation.UserIDs(); len(nodes) > 0 {
+	if nodes := vuo.mutation.RemovedUserIDs(); len(nodes) > 0 && !vuo.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.M2M,
 			Inverse: true,
 			Table:   vote.UserTable,
-			Columns: []string{vote.UserColumn},
+			Columns: vote.UserPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := vuo.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   vote.UserTable,
+			Columns: vote.UserPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
@@ -356,7 +442,7 @@ func (vuo *VoteUpdateOne) sqlSave(ctx context.Context) (_node *Vote, err error) 
 	}
 	if vuo.mutation.PolloptionCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   vote.PolloptionTable,
 			Columns: []string{vote.PolloptionColumn},
@@ -367,9 +453,25 @@ func (vuo *VoteUpdateOne) sqlSave(ctx context.Context) (_node *Vote, err error) 
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
+	if nodes := vuo.mutation.RemovedPolloptionIDs(); len(nodes) > 0 && !vuo.mutation.PolloptionCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   vote.PolloptionTable,
+			Columns: []string{vote.PolloptionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(polloption.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
 	if nodes := vuo.mutation.PolloptionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   vote.PolloptionTable,
 			Columns: []string{vote.PolloptionColumn},

@@ -28,34 +28,34 @@ func (vc *VoteCreate) SetVotedOn(t time.Time) *VoteCreate {
 	return vc
 }
 
-// SetUserID sets the "user" edge to the User entity by ID.
-func (vc *VoteCreate) SetUserID(id int) *VoteCreate {
-	vc.mutation.SetUserID(id)
+// AddUserIDs adds the "user" edge to the User entity by IDs.
+func (vc *VoteCreate) AddUserIDs(ids ...int) *VoteCreate {
+	vc.mutation.AddUserIDs(ids...)
 	return vc
 }
 
-// SetNillableUserID sets the "user" edge to the User entity by ID if the given value is not nil.
-func (vc *VoteCreate) SetNillableUserID(id *int) *VoteCreate {
-	if id != nil {
-		vc = vc.SetUserID(*id)
+// AddUser adds the "user" edges to the User entity.
+func (vc *VoteCreate) AddUser(u ...*User) *VoteCreate {
+	ids := make([]int, len(u))
+	for i := range u {
+		ids[i] = u[i].ID
 	}
+	return vc.AddUserIDs(ids...)
+}
+
+// AddPolloptionIDs adds the "polloption" edge to the PollOption entity by IDs.
+func (vc *VoteCreate) AddPolloptionIDs(ids ...int) *VoteCreate {
+	vc.mutation.AddPolloptionIDs(ids...)
 	return vc
 }
 
-// SetUser sets the "user" edge to the User entity.
-func (vc *VoteCreate) SetUser(u *User) *VoteCreate {
-	return vc.SetUserID(u.ID)
-}
-
-// SetPolloptionID sets the "polloption" edge to the PollOption entity by ID.
-func (vc *VoteCreate) SetPolloptionID(id int) *VoteCreate {
-	vc.mutation.SetPolloptionID(id)
-	return vc
-}
-
-// SetPolloption sets the "polloption" edge to the PollOption entity.
-func (vc *VoteCreate) SetPolloption(p *PollOption) *VoteCreate {
-	return vc.SetPolloptionID(p.ID)
+// AddPolloption adds the "polloption" edges to the PollOption entity.
+func (vc *VoteCreate) AddPolloption(p ...*PollOption) *VoteCreate {
+	ids := make([]int, len(p))
+	for i := range p {
+		ids[i] = p[i].ID
+	}
+	return vc.AddPolloptionIDs(ids...)
 }
 
 // Mutation returns the VoteMutation object of the builder.
@@ -95,7 +95,7 @@ func (vc *VoteCreate) check() error {
 	if _, ok := vc.mutation.VotedOn(); !ok {
 		return &ValidationError{Name: "voted_on", err: errors.New(`ent: missing required field "Vote.voted_on"`)}
 	}
-	if _, ok := vc.mutation.PolloptionID(); !ok {
+	if len(vc.mutation.PolloptionIDs()) == 0 {
 		return &ValidationError{Name: "polloption", err: errors.New(`ent: missing required edge "Vote.polloption"`)}
 	}
 	return nil
@@ -130,10 +130,10 @@ func (vc *VoteCreate) createSpec() (*Vote, *sqlgraph.CreateSpec) {
 	}
 	if nodes := vc.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.M2M,
 			Inverse: true,
 			Table:   vote.UserTable,
-			Columns: []string{vote.UserColumn},
+			Columns: vote.UserPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
@@ -142,12 +142,11 @@ func (vc *VoteCreate) createSpec() (*Vote, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.user_votes = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := vc.mutation.PolloptionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   vote.PolloptionTable,
 			Columns: []string{vote.PolloptionColumn},
@@ -159,7 +158,6 @@ func (vc *VoteCreate) createSpec() (*Vote, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.vote_polloption = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

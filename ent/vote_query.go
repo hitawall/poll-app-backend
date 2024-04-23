@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 	"poll-app-backend/ent/polloption"
@@ -25,7 +26,6 @@ type VoteQuery struct {
 	predicates     []predicate.Vote
 	withUser       *UserQuery
 	withPolloption *PollOptionQuery
-	withFKs        bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -76,7 +76,7 @@ func (vq *VoteQuery) QueryUser() *UserQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(vote.Table, vote.FieldID, selector),
 			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, vote.UserTable, vote.UserColumn),
+			sqlgraph.Edge(sqlgraph.M2M, true, vote.UserTable, vote.UserPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(vq.driver.Dialect(), step)
 		return fromU, nil
@@ -98,7 +98,7 @@ func (vq *VoteQuery) QueryPolloption() *PollOptionQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(vote.Table, vote.FieldID, selector),
 			sqlgraph.To(polloption.Table, polloption.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, false, vote.PolloptionTable, vote.PolloptionColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, vote.PolloptionTable, vote.PolloptionColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(vq.driver.Dialect(), step)
 		return fromU, nil
@@ -405,19 +405,12 @@ func (vq *VoteQuery) prepareQuery(ctx context.Context) error {
 func (vq *VoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Vote, error) {
 	var (
 		nodes       = []*Vote{}
-		withFKs     = vq.withFKs
 		_spec       = vq.querySpec()
 		loadedTypes = [2]bool{
 			vq.withUser != nil,
 			vq.withPolloption != nil,
 		}
 	)
-	if vq.withUser != nil || vq.withPolloption != nil {
-		withFKs = true
-	}
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, vote.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Vote).scanValues(nil, columns)
 	}
@@ -437,14 +430,16 @@ func (vq *VoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Vote, e
 		return nodes, nil
 	}
 	if query := vq.withUser; query != nil {
-		if err := vq.loadUser(ctx, query, nodes, nil,
-			func(n *Vote, e *User) { n.Edges.User = e }); err != nil {
+		if err := vq.loadUser(ctx, query, nodes,
+			func(n *Vote) { n.Edges.User = []*User{} },
+			func(n *Vote, e *User) { n.Edges.User = append(n.Edges.User, e) }); err != nil {
 			return nil, err
 		}
 	}
 	if query := vq.withPolloption; query != nil {
-		if err := vq.loadPolloption(ctx, query, nodes, nil,
-			func(n *Vote, e *PollOption) { n.Edges.Polloption = e }); err != nil {
+		if err := vq.loadPolloption(ctx, query, nodes,
+			func(n *Vote) { n.Edges.Polloption = []*PollOption{} },
+			func(n *Vote, e *PollOption) { n.Edges.Polloption = append(n.Edges.Polloption, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -452,66 +447,94 @@ func (vq *VoteQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Vote, e
 }
 
 func (vq *VoteQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*Vote, init func(*Vote), assign func(*Vote, *User)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*Vote)
-	for i := range nodes {
-		if nodes[i].user_votes == nil {
-			continue
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[int]*Vote)
+	nids := make(map[int]map[*Vote]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
 		}
-		fk := *nodes[i].user_votes
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
-		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
 	}
-	if len(ids) == 0 {
-		return nil
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(vote.UserTable)
+		s.Join(joinT).On(s.C(user.FieldID), joinT.C(vote.UserPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(vote.UserPrimaryKey[1]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(vote.UserPrimaryKey[1]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
 	}
-	query.Where(user.IDIn(ids...))
-	neighbors, err := query.All(ctx)
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(sql.NullInt64)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := int(values[0].(*sql.NullInt64).Int64)
+				inValue := int(values[1].(*sql.NullInt64).Int64)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Vote]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*User](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
+		nodes, ok := nids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "user_votes" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected "user" node returned %v`, n.ID)
 		}
-		for i := range nodes {
-			assign(nodes[i], n)
+		for kn := range nodes {
+			assign(kn, n)
 		}
 	}
 	return nil
 }
 func (vq *VoteQuery) loadPolloption(ctx context.Context, query *PollOptionQuery, nodes []*Vote, init func(*Vote), assign func(*Vote, *PollOption)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*Vote)
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Vote)
 	for i := range nodes {
-		if nodes[i].vote_polloption == nil {
-			continue
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
 		}
-		fk := *nodes[i].vote_polloption
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
-		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
 	}
-	if len(ids) == 0 {
-		return nil
-	}
-	query.Where(polloption.IDIn(ids...))
+	query.withFKs = true
+	query.Where(predicate.PollOption(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(vote.PolloptionColumn), fks...))
+	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
+		fk := n.vote_polloption
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "vote_polloption" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "vote_polloption" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "vote_polloption" returned %v for node %v`, *fk, n.ID)
 		}
-		for i := range nodes {
-			assign(nodes[i], n)
-		}
+		assign(node, n)
 	}
 	return nil
 }

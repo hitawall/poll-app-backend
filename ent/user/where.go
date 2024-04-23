@@ -292,7 +292,7 @@ func HasVotes() predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, VotesTable, VotesColumn),
+			sqlgraph.Edge(sqlgraph.M2M, false, VotesTable, VotesPrimaryKey...),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})

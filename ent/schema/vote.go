@@ -22,7 +22,7 @@ func (Vote) Fields() []ent.Field {
 // Edges of the Vote.
 func (Vote) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("user", User.Type).Ref("votes").Unique(),         // The user who voted, no unique constraint
-		edge.To("polloption", PollOption.Type).Unique().Required(), // The option that was voted on
+		edge.From("user", User.Type).Ref("votes"),         // The user who voted, no unique constraint
+		edge.To("polloption", PollOption.Type).Required(), // The option that was voted on
 	}
 }
