@@ -84,7 +84,7 @@ func GetVoters(client *ent.Client) httprouter.Handle {
 		option, err := client.PollOption.
 			Query().
 			Where(polloption.IDEQ(optionID)).
-			WithVotedBy().
+			WithVotes().
 			Only(r.Context())
 
 		log.Printf("Option retrieved: %s", option)
@@ -94,16 +94,22 @@ func GetVoters(client *ent.Client) httprouter.Handle {
 			return
 		}
 
-		voters, err := option.QueryVotedBy().All(r.Context())
+		all_votes, err := option.QueryVotes().WithUser().All(r.Context())
 
 		if err != nil {
 			log.Printf("Error querying voters: %v", err)
 			http.Error(w, "Failed to retrieve voters", http.StatusInternalServerError)
 			return
 		}
-		log.Printf("Found %d voters for option ID: %d", len(voters), optionID)
 
-		log.Printf("Voters retrieved: %s", voters)
+		var voters []*ent.User
+
+		for _, vote := range all_votes {
+			if vote.Edges.User != nil {
+				// Append the user associated with the vote to the users slice
+				voters = append(voters, vote.Edges.User)
+			}
+		}
 
 		hasVoted := false
 		for _, voter := range voters {
@@ -169,7 +175,7 @@ func UpdateOption(client *ent.Client) httprouter.Handle {
 		updatedOption, err := client.PollOption.
 			UpdateOne(opt).
 			SetText(req.Text).
-			ClearVotedBy(). // This removes all voter connections if the text changes
+			ClearVotes(). // This removes all voter connections if the text changes
 			Save(r.Context())
 		if err != nil {
 			http.Error(w, "Failed to update option", http.StatusInternalServerError)

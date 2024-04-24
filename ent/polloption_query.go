@@ -10,7 +10,7 @@ import (
 	"poll-app-backend/ent/poll"
 	"poll-app-backend/ent/polloption"
 	"poll-app-backend/ent/predicate"
-	"poll-app-backend/ent/user"
+	"poll-app-backend/ent/vote"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -20,13 +20,13 @@ import (
 // PollOptionQuery is the builder for querying PollOption entities.
 type PollOptionQuery struct {
 	config
-	ctx         *QueryContext
-	order       []polloption.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.PollOption
-	withPoll    *PollQuery
-	withVotedBy *UserQuery
-	withFKs     bool
+	ctx        *QueryContext
+	order      []polloption.OrderOption
+	inters     []Interceptor
+	predicates []predicate.PollOption
+	withPoll   *PollQuery
+	withVotes  *VoteQuery
+	withFKs    bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -85,9 +85,9 @@ func (poq *PollOptionQuery) QueryPoll() *PollQuery {
 	return query
 }
 
-// QueryVotedBy chains the current query on the "voted_by" edge.
-func (poq *PollOptionQuery) QueryVotedBy() *UserQuery {
-	query := (&UserClient{config: poq.config}).Query()
+// QueryVotes chains the current query on the "votes" edge.
+func (poq *PollOptionQuery) QueryVotes() *VoteQuery {
+	query := (&VoteClient{config: poq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := poq.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -98,8 +98,8 @@ func (poq *PollOptionQuery) QueryVotedBy() *UserQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(polloption.Table, polloption.FieldID, selector),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, polloption.VotedByTable, polloption.VotedByColumn),
+			sqlgraph.To(vote.Table, vote.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, polloption.VotesTable, polloption.VotesPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(poq.driver.Dialect(), step)
 		return fromU, nil
@@ -294,13 +294,13 @@ func (poq *PollOptionQuery) Clone() *PollOptionQuery {
 		return nil
 	}
 	return &PollOptionQuery{
-		config:      poq.config,
-		ctx:         poq.ctx.Clone(),
-		order:       append([]polloption.OrderOption{}, poq.order...),
-		inters:      append([]Interceptor{}, poq.inters...),
-		predicates:  append([]predicate.PollOption{}, poq.predicates...),
-		withPoll:    poq.withPoll.Clone(),
-		withVotedBy: poq.withVotedBy.Clone(),
+		config:     poq.config,
+		ctx:        poq.ctx.Clone(),
+		order:      append([]polloption.OrderOption{}, poq.order...),
+		inters:     append([]Interceptor{}, poq.inters...),
+		predicates: append([]predicate.PollOption{}, poq.predicates...),
+		withPoll:   poq.withPoll.Clone(),
+		withVotes:  poq.withVotes.Clone(),
 		// clone intermediate query.
 		sql:  poq.sql.Clone(),
 		path: poq.path,
@@ -318,14 +318,14 @@ func (poq *PollOptionQuery) WithPoll(opts ...func(*PollQuery)) *PollOptionQuery 
 	return poq
 }
 
-// WithVotedBy tells the query-builder to eager-load the nodes that are connected to
-// the "voted_by" edge. The optional arguments are used to configure the query builder of the edge.
-func (poq *PollOptionQuery) WithVotedBy(opts ...func(*UserQuery)) *PollOptionQuery {
-	query := (&UserClient{config: poq.config}).Query()
+// WithVotes tells the query-builder to eager-load the nodes that are connected to
+// the "votes" edge. The optional arguments are used to configure the query builder of the edge.
+func (poq *PollOptionQuery) WithVotes(opts ...func(*VoteQuery)) *PollOptionQuery {
+	query := (&VoteClient{config: poq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	poq.withVotedBy = query
+	poq.withVotes = query
 	return poq
 }
 
@@ -410,7 +410,7 @@ func (poq *PollOptionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 		_spec       = poq.querySpec()
 		loadedTypes = [2]bool{
 			poq.withPoll != nil,
-			poq.withVotedBy != nil,
+			poq.withVotes != nil,
 		}
 	)
 	if poq.withPoll != nil {
@@ -443,10 +443,10 @@ func (poq *PollOptionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 			return nil, err
 		}
 	}
-	if query := poq.withVotedBy; query != nil {
-		if err := poq.loadVotedBy(ctx, query, nodes,
-			func(n *PollOption) { n.Edges.VotedBy = []*User{} },
-			func(n *PollOption, e *User) { n.Edges.VotedBy = append(n.Edges.VotedBy, e) }); err != nil {
+	if query := poq.withVotes; query != nil {
+		if err := poq.loadVotes(ctx, query, nodes,
+			func(n *PollOption) { n.Edges.Votes = []*Vote{} },
+			func(n *PollOption, e *Vote) { n.Edges.Votes = append(n.Edges.Votes, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -485,34 +485,64 @@ func (poq *PollOptionQuery) loadPoll(ctx context.Context, query *PollQuery, node
 	}
 	return nil
 }
-func (poq *PollOptionQuery) loadVotedBy(ctx context.Context, query *UserQuery, nodes []*PollOption, init func(*PollOption), assign func(*PollOption, *User)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*PollOption)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
+func (poq *PollOptionQuery) loadVotes(ctx context.Context, query *VoteQuery, nodes []*PollOption, init func(*PollOption), assign func(*PollOption, *Vote)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[int]*PollOption)
+	nids := make(map[int]map[*PollOption]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
 		if init != nil {
-			init(nodes[i])
+			init(node)
 		}
 	}
-	query.withFKs = true
-	query.Where(predicate.User(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(polloption.VotedByColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(polloption.VotesTable)
+		s.Join(joinT).On(s.C(vote.FieldID), joinT.C(polloption.VotesPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(polloption.VotesPrimaryKey[0]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(polloption.VotesPrimaryKey[0]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(sql.NullInt64)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := int(values[0].(*sql.NullInt64).Int64)
+				inValue := int(values[1].(*sql.NullInt64).Int64)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*PollOption]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Vote](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.poll_option_voted_by
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "poll_option_voted_by" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
+		nodes, ok := nids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "poll_option_voted_by" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected "votes" node returned %v`, n.ID)
 		}
-		assign(node, n)
+		for kn := range nodes {
+			assign(kn, n)
+		}
 	}
 	return nil
 }

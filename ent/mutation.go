@@ -514,21 +514,21 @@ func (m *PollMutation) ResetEdge(name string) error {
 // PollOptionMutation represents an operation that mutates the PollOption nodes in the graph.
 type PollOptionMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *int
-	text            *string
-	votes           *int
-	addvotes        *int
-	clearedFields   map[string]struct{}
-	poll            *int
-	clearedpoll     bool
-	voted_by        map[int]struct{}
-	removedvoted_by map[int]struct{}
-	clearedvoted_by bool
-	done            bool
-	oldValue        func(context.Context) (*PollOption, error)
-	predicates      []predicate.PollOption
+	op            Op
+	typ           string
+	id            *int
+	text          *string
+	vote_count    *int
+	addvote_count *int
+	clearedFields map[string]struct{}
+	poll          *int
+	clearedpoll   bool
+	votes         map[int]struct{}
+	removedvotes  map[int]struct{}
+	clearedvotes  bool
+	done          bool
+	oldValue      func(context.Context) (*PollOption, error)
+	predicates    []predicate.PollOption
 }
 
 var _ ent.Mutation = (*PollOptionMutation)(nil)
@@ -665,60 +665,60 @@ func (m *PollOptionMutation) ResetText() {
 	m.text = nil
 }
 
-// SetVotes sets the "votes" field.
-func (m *PollOptionMutation) SetVotes(i int) {
-	m.votes = &i
-	m.addvotes = nil
+// SetVoteCount sets the "vote_count" field.
+func (m *PollOptionMutation) SetVoteCount(i int) {
+	m.vote_count = &i
+	m.addvote_count = nil
 }
 
-// Votes returns the value of the "votes" field in the mutation.
-func (m *PollOptionMutation) Votes() (r int, exists bool) {
-	v := m.votes
+// VoteCount returns the value of the "vote_count" field in the mutation.
+func (m *PollOptionMutation) VoteCount() (r int, exists bool) {
+	v := m.vote_count
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldVotes returns the old "votes" field's value of the PollOption entity.
+// OldVoteCount returns the old "vote_count" field's value of the PollOption entity.
 // If the PollOption object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *PollOptionMutation) OldVotes(ctx context.Context) (v int, err error) {
+func (m *PollOptionMutation) OldVoteCount(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldVotes is only allowed on UpdateOne operations")
+		return v, errors.New("OldVoteCount is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldVotes requires an ID field in the mutation")
+		return v, errors.New("OldVoteCount requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldVotes: %w", err)
+		return v, fmt.Errorf("querying old value for OldVoteCount: %w", err)
 	}
-	return oldValue.Votes, nil
+	return oldValue.VoteCount, nil
 }
 
-// AddVotes adds i to the "votes" field.
-func (m *PollOptionMutation) AddVotes(i int) {
-	if m.addvotes != nil {
-		*m.addvotes += i
+// AddVoteCount adds i to the "vote_count" field.
+func (m *PollOptionMutation) AddVoteCount(i int) {
+	if m.addvote_count != nil {
+		*m.addvote_count += i
 	} else {
-		m.addvotes = &i
+		m.addvote_count = &i
 	}
 }
 
-// AddedVotes returns the value that was added to the "votes" field in this mutation.
-func (m *PollOptionMutation) AddedVotes() (r int, exists bool) {
-	v := m.addvotes
+// AddedVoteCount returns the value that was added to the "vote_count" field in this mutation.
+func (m *PollOptionMutation) AddedVoteCount() (r int, exists bool) {
+	v := m.addvote_count
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetVotes resets all changes to the "votes" field.
-func (m *PollOptionMutation) ResetVotes() {
-	m.votes = nil
-	m.addvotes = nil
+// ResetVoteCount resets all changes to the "vote_count" field.
+func (m *PollOptionMutation) ResetVoteCount() {
+	m.vote_count = nil
+	m.addvote_count = nil
 }
 
 // SetPollID sets the "poll" edge to the Poll entity by id.
@@ -760,58 +760,58 @@ func (m *PollOptionMutation) ResetPoll() {
 	m.clearedpoll = false
 }
 
-// AddVotedByIDs adds the "voted_by" edge to the User entity by ids.
-func (m *PollOptionMutation) AddVotedByIDs(ids ...int) {
-	if m.voted_by == nil {
-		m.voted_by = make(map[int]struct{})
+// AddVoteIDs adds the "votes" edge to the Vote entity by ids.
+func (m *PollOptionMutation) AddVoteIDs(ids ...int) {
+	if m.votes == nil {
+		m.votes = make(map[int]struct{})
 	}
 	for i := range ids {
-		m.voted_by[ids[i]] = struct{}{}
+		m.votes[ids[i]] = struct{}{}
 	}
 }
 
-// ClearVotedBy clears the "voted_by" edge to the User entity.
-func (m *PollOptionMutation) ClearVotedBy() {
-	m.clearedvoted_by = true
+// ClearVotes clears the "votes" edge to the Vote entity.
+func (m *PollOptionMutation) ClearVotes() {
+	m.clearedvotes = true
 }
 
-// VotedByCleared reports if the "voted_by" edge to the User entity was cleared.
-func (m *PollOptionMutation) VotedByCleared() bool {
-	return m.clearedvoted_by
+// VotesCleared reports if the "votes" edge to the Vote entity was cleared.
+func (m *PollOptionMutation) VotesCleared() bool {
+	return m.clearedvotes
 }
 
-// RemoveVotedByIDs removes the "voted_by" edge to the User entity by IDs.
-func (m *PollOptionMutation) RemoveVotedByIDs(ids ...int) {
-	if m.removedvoted_by == nil {
-		m.removedvoted_by = make(map[int]struct{})
+// RemoveVoteIDs removes the "votes" edge to the Vote entity by IDs.
+func (m *PollOptionMutation) RemoveVoteIDs(ids ...int) {
+	if m.removedvotes == nil {
+		m.removedvotes = make(map[int]struct{})
 	}
 	for i := range ids {
-		delete(m.voted_by, ids[i])
-		m.removedvoted_by[ids[i]] = struct{}{}
+		delete(m.votes, ids[i])
+		m.removedvotes[ids[i]] = struct{}{}
 	}
 }
 
-// RemovedVotedBy returns the removed IDs of the "voted_by" edge to the User entity.
-func (m *PollOptionMutation) RemovedVotedByIDs() (ids []int) {
-	for id := range m.removedvoted_by {
+// RemovedVotes returns the removed IDs of the "votes" edge to the Vote entity.
+func (m *PollOptionMutation) RemovedVotesIDs() (ids []int) {
+	for id := range m.removedvotes {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// VotedByIDs returns the "voted_by" edge IDs in the mutation.
-func (m *PollOptionMutation) VotedByIDs() (ids []int) {
-	for id := range m.voted_by {
+// VotesIDs returns the "votes" edge IDs in the mutation.
+func (m *PollOptionMutation) VotesIDs() (ids []int) {
+	for id := range m.votes {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// ResetVotedBy resets all changes to the "voted_by" edge.
-func (m *PollOptionMutation) ResetVotedBy() {
-	m.voted_by = nil
-	m.clearedvoted_by = false
-	m.removedvoted_by = nil
+// ResetVotes resets all changes to the "votes" edge.
+func (m *PollOptionMutation) ResetVotes() {
+	m.votes = nil
+	m.clearedvotes = false
+	m.removedvotes = nil
 }
 
 // Where appends a list predicates to the PollOptionMutation builder.
@@ -852,8 +852,8 @@ func (m *PollOptionMutation) Fields() []string {
 	if m.text != nil {
 		fields = append(fields, polloption.FieldText)
 	}
-	if m.votes != nil {
-		fields = append(fields, polloption.FieldVotes)
+	if m.vote_count != nil {
+		fields = append(fields, polloption.FieldVoteCount)
 	}
 	return fields
 }
@@ -865,8 +865,8 @@ func (m *PollOptionMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case polloption.FieldText:
 		return m.Text()
-	case polloption.FieldVotes:
-		return m.Votes()
+	case polloption.FieldVoteCount:
+		return m.VoteCount()
 	}
 	return nil, false
 }
@@ -878,8 +878,8 @@ func (m *PollOptionMutation) OldField(ctx context.Context, name string) (ent.Val
 	switch name {
 	case polloption.FieldText:
 		return m.OldText(ctx)
-	case polloption.FieldVotes:
-		return m.OldVotes(ctx)
+	case polloption.FieldVoteCount:
+		return m.OldVoteCount(ctx)
 	}
 	return nil, fmt.Errorf("unknown PollOption field %s", name)
 }
@@ -896,12 +896,12 @@ func (m *PollOptionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetText(v)
 		return nil
-	case polloption.FieldVotes:
+	case polloption.FieldVoteCount:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetVotes(v)
+		m.SetVoteCount(v)
 		return nil
 	}
 	return fmt.Errorf("unknown PollOption field %s", name)
@@ -911,8 +911,8 @@ func (m *PollOptionMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *PollOptionMutation) AddedFields() []string {
 	var fields []string
-	if m.addvotes != nil {
-		fields = append(fields, polloption.FieldVotes)
+	if m.addvote_count != nil {
+		fields = append(fields, polloption.FieldVoteCount)
 	}
 	return fields
 }
@@ -922,8 +922,8 @@ func (m *PollOptionMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *PollOptionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case polloption.FieldVotes:
-		return m.AddedVotes()
+	case polloption.FieldVoteCount:
+		return m.AddedVoteCount()
 	}
 	return nil, false
 }
@@ -933,12 +933,12 @@ func (m *PollOptionMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *PollOptionMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case polloption.FieldVotes:
+	case polloption.FieldVoteCount:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddVotes(v)
+		m.AddVoteCount(v)
 		return nil
 	}
 	return fmt.Errorf("unknown PollOption numeric field %s", name)
@@ -970,8 +970,8 @@ func (m *PollOptionMutation) ResetField(name string) error {
 	case polloption.FieldText:
 		m.ResetText()
 		return nil
-	case polloption.FieldVotes:
-		m.ResetVotes()
+	case polloption.FieldVoteCount:
+		m.ResetVoteCount()
 		return nil
 	}
 	return fmt.Errorf("unknown PollOption field %s", name)
@@ -983,8 +983,8 @@ func (m *PollOptionMutation) AddedEdges() []string {
 	if m.poll != nil {
 		edges = append(edges, polloption.EdgePoll)
 	}
-	if m.voted_by != nil {
-		edges = append(edges, polloption.EdgeVotedBy)
+	if m.votes != nil {
+		edges = append(edges, polloption.EdgeVotes)
 	}
 	return edges
 }
@@ -997,9 +997,9 @@ func (m *PollOptionMutation) AddedIDs(name string) []ent.Value {
 		if id := m.poll; id != nil {
 			return []ent.Value{*id}
 		}
-	case polloption.EdgeVotedBy:
-		ids := make([]ent.Value, 0, len(m.voted_by))
-		for id := range m.voted_by {
+	case polloption.EdgeVotes:
+		ids := make([]ent.Value, 0, len(m.votes))
+		for id := range m.votes {
 			ids = append(ids, id)
 		}
 		return ids
@@ -1010,8 +1010,8 @@ func (m *PollOptionMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *PollOptionMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 2)
-	if m.removedvoted_by != nil {
-		edges = append(edges, polloption.EdgeVotedBy)
+	if m.removedvotes != nil {
+		edges = append(edges, polloption.EdgeVotes)
 	}
 	return edges
 }
@@ -1020,9 +1020,9 @@ func (m *PollOptionMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *PollOptionMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
-	case polloption.EdgeVotedBy:
-		ids := make([]ent.Value, 0, len(m.removedvoted_by))
-		for id := range m.removedvoted_by {
+	case polloption.EdgeVotes:
+		ids := make([]ent.Value, 0, len(m.removedvotes))
+		for id := range m.removedvotes {
 			ids = append(ids, id)
 		}
 		return ids
@@ -1036,8 +1036,8 @@ func (m *PollOptionMutation) ClearedEdges() []string {
 	if m.clearedpoll {
 		edges = append(edges, polloption.EdgePoll)
 	}
-	if m.clearedvoted_by {
-		edges = append(edges, polloption.EdgeVotedBy)
+	if m.clearedvotes {
+		edges = append(edges, polloption.EdgeVotes)
 	}
 	return edges
 }
@@ -1048,8 +1048,8 @@ func (m *PollOptionMutation) EdgeCleared(name string) bool {
 	switch name {
 	case polloption.EdgePoll:
 		return m.clearedpoll
-	case polloption.EdgeVotedBy:
-		return m.clearedvoted_by
+	case polloption.EdgeVotes:
+		return m.clearedvotes
 	}
 	return false
 }
@@ -1072,8 +1072,8 @@ func (m *PollOptionMutation) ResetEdge(name string) error {
 	case polloption.EdgePoll:
 		m.ResetPoll()
 		return nil
-	case polloption.EdgeVotedBy:
-		m.ResetVotedBy()
+	case polloption.EdgeVotes:
+		m.ResetVotes()
 		return nil
 	}
 	return fmt.Errorf("unknown PollOption edge %s", name)
@@ -1697,8 +1697,7 @@ type VoteMutation struct {
 	id                *int
 	voted_on          *time.Time
 	clearedFields     map[string]struct{}
-	user              map[int]struct{}
-	removeduser       map[int]struct{}
+	user              *int
 	cleareduser       bool
 	polloption        map[int]struct{}
 	removedpolloption map[int]struct{}
@@ -1842,14 +1841,9 @@ func (m *VoteMutation) ResetVotedOn() {
 	m.voted_on = nil
 }
 
-// AddUserIDs adds the "user" edge to the User entity by ids.
-func (m *VoteMutation) AddUserIDs(ids ...int) {
-	if m.user == nil {
-		m.user = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.user[ids[i]] = struct{}{}
-	}
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *VoteMutation) SetUserID(id int) {
+	m.user = &id
 }
 
 // ClearUser clears the "user" edge to the User entity.
@@ -1862,29 +1856,20 @@ func (m *VoteMutation) UserCleared() bool {
 	return m.cleareduser
 }
 
-// RemoveUserIDs removes the "user" edge to the User entity by IDs.
-func (m *VoteMutation) RemoveUserIDs(ids ...int) {
-	if m.removeduser == nil {
-		m.removeduser = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.user, ids[i])
-		m.removeduser[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedUser returns the removed IDs of the "user" edge to the User entity.
-func (m *VoteMutation) RemovedUserIDs() (ids []int) {
-	for id := range m.removeduser {
-		ids = append(ids, id)
+// UserID returns the "user" edge ID in the mutation.
+func (m *VoteMutation) UserID() (id int, exists bool) {
+	if m.user != nil {
+		return *m.user, true
 	}
 	return
 }
 
 // UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
 func (m *VoteMutation) UserIDs() (ids []int) {
-	for id := range m.user {
-		ids = append(ids, id)
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
 	}
 	return
 }
@@ -1893,7 +1878,6 @@ func (m *VoteMutation) UserIDs() (ids []int) {
 func (m *VoteMutation) ResetUser() {
 	m.user = nil
 	m.cleareduser = false
-	m.removeduser = nil
 }
 
 // AddPolloptionIDs adds the "polloption" edge to the PollOption entity by ids.
@@ -2098,11 +2082,9 @@ func (m *VoteMutation) AddedEdges() []string {
 func (m *VoteMutation) AddedIDs(name string) []ent.Value {
 	switch name {
 	case vote.EdgeUser:
-		ids := make([]ent.Value, 0, len(m.user))
-		for id := range m.user {
-			ids = append(ids, id)
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
 		}
-		return ids
 	case vote.EdgePolloption:
 		ids := make([]ent.Value, 0, len(m.polloption))
 		for id := range m.polloption {
@@ -2116,9 +2098,6 @@ func (m *VoteMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *VoteMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 2)
-	if m.removeduser != nil {
-		edges = append(edges, vote.EdgeUser)
-	}
 	if m.removedpolloption != nil {
 		edges = append(edges, vote.EdgePolloption)
 	}
@@ -2129,12 +2108,6 @@ func (m *VoteMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *VoteMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
-	case vote.EdgeUser:
-		ids := make([]ent.Value, 0, len(m.removeduser))
-		for id := range m.removeduser {
-			ids = append(ids, id)
-		}
-		return ids
 	case vote.EdgePolloption:
 		ids := make([]ent.Value, 0, len(m.removedpolloption))
 		for id := range m.removedpolloption {
@@ -2173,6 +2146,9 @@ func (m *VoteMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *VoteMutation) ClearEdge(name string) error {
 	switch name {
+	case vote.EdgeUser:
+		m.ClearUser()
+		return nil
 	}
 	return fmt.Errorf("unknown Vote unique edge %s", name)
 }

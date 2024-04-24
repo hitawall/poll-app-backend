@@ -19,13 +19,12 @@ type PollOption struct {
 	ID int `json:"id,omitempty"`
 	// Text holds the value of the "text" field.
 	Text string `json:"text,omitempty"`
-	// Votes holds the value of the "votes" field.
-	Votes int `json:"votes,omitempty"`
+	// VoteCount holds the value of the "vote_count" field.
+	VoteCount int `json:"vote_count,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the PollOptionQuery when eager-loading is set.
 	Edges            PollOptionEdges `json:"edges"`
 	poll_polloptions *int
-	vote_polloption  *int
 	selectValues     sql.SelectValues
 }
 
@@ -33,8 +32,8 @@ type PollOption struct {
 type PollOptionEdges struct {
 	// Poll holds the value of the poll edge.
 	Poll *Poll `json:"poll,omitempty"`
-	// VotedBy holds the value of the voted_by edge.
-	VotedBy []*User `json:"voted_by,omitempty"`
+	// Votes holds the value of the votes edge.
+	Votes []*Vote `json:"votes,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [2]bool
@@ -51,13 +50,13 @@ func (e PollOptionEdges) PollOrErr() (*Poll, error) {
 	return nil, &NotLoadedError{edge: "poll"}
 }
 
-// VotedByOrErr returns the VotedBy value or an error if the edge
+// VotesOrErr returns the Votes value or an error if the edge
 // was not loaded in eager-loading.
-func (e PollOptionEdges) VotedByOrErr() ([]*User, error) {
+func (e PollOptionEdges) VotesOrErr() ([]*Vote, error) {
 	if e.loadedTypes[1] {
-		return e.VotedBy, nil
+		return e.Votes, nil
 	}
-	return nil, &NotLoadedError{edge: "voted_by"}
+	return nil, &NotLoadedError{edge: "votes"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -65,13 +64,11 @@ func (*PollOption) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case polloption.FieldID, polloption.FieldVotes:
+		case polloption.FieldID, polloption.FieldVoteCount:
 			values[i] = new(sql.NullInt64)
 		case polloption.FieldText:
 			values[i] = new(sql.NullString)
 		case polloption.ForeignKeys[0]: // poll_polloptions
-			values[i] = new(sql.NullInt64)
-		case polloption.ForeignKeys[1]: // vote_polloption
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -100,11 +97,11 @@ func (po *PollOption) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				po.Text = value.String
 			}
-		case polloption.FieldVotes:
+		case polloption.FieldVoteCount:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field votes", values[i])
+				return fmt.Errorf("unexpected type %T for field vote_count", values[i])
 			} else if value.Valid {
-				po.Votes = int(value.Int64)
+				po.VoteCount = int(value.Int64)
 			}
 		case polloption.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -112,13 +109,6 @@ func (po *PollOption) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				po.poll_polloptions = new(int)
 				*po.poll_polloptions = int(value.Int64)
-			}
-		case polloption.ForeignKeys[1]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field vote_polloption", value)
-			} else if value.Valid {
-				po.vote_polloption = new(int)
-				*po.vote_polloption = int(value.Int64)
 			}
 		default:
 			po.selectValues.Set(columns[i], values[i])
@@ -138,9 +128,9 @@ func (po *PollOption) QueryPoll() *PollQuery {
 	return NewPollOptionClient(po.config).QueryPoll(po)
 }
 
-// QueryVotedBy queries the "voted_by" edge of the PollOption entity.
-func (po *PollOption) QueryVotedBy() *UserQuery {
-	return NewPollOptionClient(po.config).QueryVotedBy(po)
+// QueryVotes queries the "votes" edge of the PollOption entity.
+func (po *PollOption) QueryVotes() *VoteQuery {
+	return NewPollOptionClient(po.config).QueryVotes(po)
 }
 
 // Update returns a builder for updating this PollOption.
@@ -169,8 +159,8 @@ func (po *PollOption) String() string {
 	builder.WriteString("text=")
 	builder.WriteString(po.Text)
 	builder.WriteString(", ")
-	builder.WriteString("votes=")
-	builder.WriteString(fmt.Sprintf("%v", po.Votes))
+	builder.WriteString("vote_count=")
+	builder.WriteString(fmt.Sprintf("%v", po.VoteCount))
 	builder.WriteByte(')')
 	return builder.String()
 }

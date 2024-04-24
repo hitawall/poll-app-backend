@@ -5,6 +5,7 @@ package ent
 import (
 	"poll-app-backend/ent/polloption"
 	"poll-app-backend/ent/schema"
+	"poll-app-backend/ent/user"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -13,8 +14,14 @@ import (
 func init() {
 	polloptionFields := schema.PollOption{}.Fields()
 	_ = polloptionFields
-	// polloptionDescVotes is the schema descriptor for votes field.
-	polloptionDescVotes := polloptionFields[1].Descriptor()
-	// polloption.DefaultVotes holds the default value on creation for the votes field.
-	polloption.DefaultVotes = polloptionDescVotes.Default.(int)
+	// polloptionDescVoteCount is the schema descriptor for vote_count field.
+	polloptionDescVoteCount := polloptionFields[1].Descriptor()
+	// polloption.DefaultVoteCount holds the default value on creation for the vote_count field.
+	polloption.DefaultVoteCount = polloptionDescVoteCount.Default.(int)
+	userFields := schema.User{}.Fields()
+	_ = userFields
+	// userDescName is the schema descriptor for name field.
+	userDescName := userFields[1].Descriptor()
+	// user.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	user.NameValidator = userDescName.Validators[0].(func(string) error)
 }

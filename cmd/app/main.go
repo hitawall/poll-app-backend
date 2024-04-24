@@ -31,7 +31,7 @@ func main() {
 	router.GET("/polls/:id", handlers.AuthMiddleware(client, handlers.GetPoll(client)))
 	router.POST("/polls/:id/options", handlers.AuthMiddleware(client, handlers.AddOption(client)))
 	router.POST("/options/:id/vote", handlers.AuthMiddleware(client, handlers.VoteOption(client)))
-	router.POST("/options/:id/devote", handlers.AuthMiddleware(client, handlers.DeVoteOption(client)))
+	//router.POST("/options/:id/devote", handlers.AuthMiddleware(client, handlers.DeVoteOption(client)))
 	router.GET("/polls", handlers.AuthMiddleware(client, handlers.GetPolls(client)))
 	router.GET("/options/:id/voters", handlers.AuthMiddleware(client, handlers.GetVoters(client)))
 	router.PUT("/options/:id", handlers.AuthMiddleware(client, handlers.UpdateOption(client)))

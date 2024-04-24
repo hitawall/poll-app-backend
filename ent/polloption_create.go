@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"poll-app-backend/ent/poll"
 	"poll-app-backend/ent/polloption"
-	"poll-app-backend/ent/user"
+	"poll-app-backend/ent/vote"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -27,16 +27,16 @@ func (poc *PollOptionCreate) SetText(s string) *PollOptionCreate {
 	return poc
 }
 
-// SetVotes sets the "votes" field.
-func (poc *PollOptionCreate) SetVotes(i int) *PollOptionCreate {
-	poc.mutation.SetVotes(i)
+// SetVoteCount sets the "vote_count" field.
+func (poc *PollOptionCreate) SetVoteCount(i int) *PollOptionCreate {
+	poc.mutation.SetVoteCount(i)
 	return poc
 }
 
-// SetNillableVotes sets the "votes" field if the given value is not nil.
-func (poc *PollOptionCreate) SetNillableVotes(i *int) *PollOptionCreate {
+// SetNillableVoteCount sets the "vote_count" field if the given value is not nil.
+func (poc *PollOptionCreate) SetNillableVoteCount(i *int) *PollOptionCreate {
 	if i != nil {
-		poc.SetVotes(*i)
+		poc.SetVoteCount(*i)
 	}
 	return poc
 }
@@ -60,19 +60,19 @@ func (poc *PollOptionCreate) SetPoll(p *Poll) *PollOptionCreate {
 	return poc.SetPollID(p.ID)
 }
 
-// AddVotedByIDs adds the "voted_by" edge to the User entity by IDs.
-func (poc *PollOptionCreate) AddVotedByIDs(ids ...int) *PollOptionCreate {
-	poc.mutation.AddVotedByIDs(ids...)
+// AddVoteIDs adds the "votes" edge to the Vote entity by IDs.
+func (poc *PollOptionCreate) AddVoteIDs(ids ...int) *PollOptionCreate {
+	poc.mutation.AddVoteIDs(ids...)
 	return poc
 }
 
-// AddVotedBy adds the "voted_by" edges to the User entity.
-func (poc *PollOptionCreate) AddVotedBy(u ...*User) *PollOptionCreate {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
+// AddVotes adds the "votes" edges to the Vote entity.
+func (poc *PollOptionCreate) AddVotes(v ...*Vote) *PollOptionCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
 	}
-	return poc.AddVotedByIDs(ids...)
+	return poc.AddVoteIDs(ids...)
 }
 
 // Mutation returns the PollOptionMutation object of the builder.
@@ -110,9 +110,9 @@ func (poc *PollOptionCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (poc *PollOptionCreate) defaults() {
-	if _, ok := poc.mutation.Votes(); !ok {
-		v := polloption.DefaultVotes
-		poc.mutation.SetVotes(v)
+	if _, ok := poc.mutation.VoteCount(); !ok {
+		v := polloption.DefaultVoteCount
+		poc.mutation.SetVoteCount(v)
 	}
 }
 
@@ -121,8 +121,8 @@ func (poc *PollOptionCreate) check() error {
 	if _, ok := poc.mutation.Text(); !ok {
 		return &ValidationError{Name: "text", err: errors.New(`ent: missing required field "PollOption.text"`)}
 	}
-	if _, ok := poc.mutation.Votes(); !ok {
-		return &ValidationError{Name: "votes", err: errors.New(`ent: missing required field "PollOption.votes"`)}
+	if _, ok := poc.mutation.VoteCount(); !ok {
+		return &ValidationError{Name: "vote_count", err: errors.New(`ent: missing required field "PollOption.vote_count"`)}
 	}
 	return nil
 }
@@ -154,9 +154,9 @@ func (poc *PollOptionCreate) createSpec() (*PollOption, *sqlgraph.CreateSpec) {
 		_spec.SetField(polloption.FieldText, field.TypeString, value)
 		_node.Text = value
 	}
-	if value, ok := poc.mutation.Votes(); ok {
-		_spec.SetField(polloption.FieldVotes, field.TypeInt, value)
-		_node.Votes = value
+	if value, ok := poc.mutation.VoteCount(); ok {
+		_spec.SetField(polloption.FieldVoteCount, field.TypeInt, value)
+		_node.VoteCount = value
 	}
 	if nodes := poc.mutation.PollIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -175,15 +175,15 @@ func (poc *PollOptionCreate) createSpec() (*PollOption, *sqlgraph.CreateSpec) {
 		_node.poll_polloptions = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := poc.mutation.VotedByIDs(); len(nodes) > 0 {
+	if nodes := poc.mutation.VotesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
+			Rel:     sqlgraph.M2M,
 			Inverse: false,
-			Table:   polloption.VotedByTable,
-			Columns: []string{polloption.VotedByColumn},
+			Table:   polloption.VotesTable,
+			Columns: polloption.VotesPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(vote.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

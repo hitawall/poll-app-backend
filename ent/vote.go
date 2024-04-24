@@ -4,6 +4,7 @@ package ent
 
 import (
 	"fmt"
+	"poll-app-backend/ent/user"
 	"poll-app-backend/ent/vote"
 	"strings"
 	"time"
@@ -22,13 +23,14 @@ type Vote struct {
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the VoteQuery when eager-loading is set.
 	Edges        VoteEdges `json:"edges"`
+	user_votes   *int
 	selectValues sql.SelectValues
 }
 
 // VoteEdges holds the relations/edges for other nodes in the graph.
 type VoteEdges struct {
 	// User holds the value of the user edge.
-	User []*User `json:"user,omitempty"`
+	User *User `json:"user,omitempty"`
 	// Polloption holds the value of the polloption edge.
 	Polloption []*PollOption `json:"polloption,omitempty"`
 	// loadedTypes holds the information for reporting if a
@@ -37,10 +39,12 @@ type VoteEdges struct {
 }
 
 // UserOrErr returns the User value or an error if the edge
-// was not loaded in eager-loading.
-func (e VoteEdges) UserOrErr() ([]*User, error) {
-	if e.loadedTypes[0] {
+// was not loaded in eager-loading, or loaded but was not found.
+func (e VoteEdges) UserOrErr() (*User, error) {
+	if e.User != nil {
 		return e.User, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: user.Label}
 	}
 	return nil, &NotLoadedError{edge: "user"}
 }
@@ -63,6 +67,8 @@ func (*Vote) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case vote.FieldVotedOn:
 			values[i] = new(sql.NullTime)
+		case vote.ForeignKeys[0]: // user_votes
+			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -89,6 +95,13 @@ func (v *Vote) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field voted_on", values[i])
 			} else if value.Valid {
 				v.VotedOn = value.Time
+			}
+		case vote.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field user_votes", value)
+			} else if value.Valid {
+				v.user_votes = new(int)
+				*v.user_votes = int(value.Int64)
 			}
 		default:
 			v.selectValues.Set(columns[i], values[i])

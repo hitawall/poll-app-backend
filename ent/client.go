@@ -517,15 +517,15 @@ func (c *PollOptionClient) QueryPoll(po *PollOption) *PollQuery {
 	return query
 }
 
-// QueryVotedBy queries the voted_by edge of a PollOption.
-func (c *PollOptionClient) QueryVotedBy(po *PollOption) *UserQuery {
-	query := (&UserClient{config: c.config}).Query()
+// QueryVotes queries the votes edge of a PollOption.
+func (c *PollOptionClient) QueryVotes(po *PollOption) *VoteQuery {
+	query := (&VoteClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := po.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(polloption.Table, polloption.FieldID, id),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, polloption.VotedByTable, polloption.VotedByColumn),
+			sqlgraph.To(vote.Table, vote.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, polloption.VotesTable, polloption.VotesPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(po.driver.Dialect(), step)
 		return fromV, nil
@@ -690,7 +690,7 @@ func (c *UserClient) QueryVotes(u *User) *VoteQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(vote.Table, vote.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, user.VotesTable, user.VotesPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.VotesTable, user.VotesColumn),
 		)
 		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
 		return fromV, nil
@@ -839,7 +839,7 @@ func (c *VoteClient) QueryUser(v *Vote) *UserQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(vote.Table, vote.FieldID, id),
 			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, vote.UserTable, vote.UserPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, vote.UserTable, vote.UserColumn),
 		)
 		fromV = sqlgraph.Neighbors(v.driver.Dialect(), step)
 		return fromV, nil
@@ -855,7 +855,7 @@ func (c *VoteClient) QueryPolloption(v *Vote) *PollOptionQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(vote.Table, vote.FieldID, id),
 			sqlgraph.To(polloption.Table, polloption.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, vote.PolloptionTable, vote.PolloptionColumn),
+			sqlgraph.Edge(sqlgraph.M2M, true, vote.PolloptionTable, vote.PolloptionPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(v.driver.Dialect(), step)
 		return fromV, nil

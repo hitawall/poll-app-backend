@@ -32,9 +32,8 @@ var (
 	PollOptionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "text", Type: field.TypeString},
-		{Name: "votes", Type: field.TypeInt, Default: 0},
+		{Name: "vote_count", Type: field.TypeInt, Default: 0},
 		{Name: "poll_polloptions", Type: field.TypeInt, Nullable: true},
-		{Name: "vote_polloption", Type: field.TypeInt, Nullable: true},
 	}
 	// PollOptionsTable holds the schema information for the "poll_options" table.
 	PollOptionsTable = &schema.Table{
@@ -48,12 +47,6 @@ var (
 				RefColumns: []*schema.Column{PollsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
-			{
-				Symbol:     "poll_options_votes_polloption",
-				Columns:    []*schema.Column{PollOptionsColumns[4]},
-				RefColumns: []*schema.Column{VotesColumns[0]},
-				OnDelete:   schema.SetNull,
-			},
 		},
 	}
 	// UsersColumns holds the columns for the "users" table.
@@ -62,53 +55,53 @@ var (
 		{Name: "email", Type: field.TypeString, Unique: true},
 		{Name: "name", Type: field.TypeString},
 		{Name: "password", Type: field.TypeString},
-		{Name: "poll_option_voted_by", Type: field.TypeInt, Nullable: true},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
 		Name:       "users",
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "users_poll_options_voted_by",
-				Columns:    []*schema.Column{UsersColumns[4]},
-				RefColumns: []*schema.Column{PollOptionsColumns[0]},
-				OnDelete:   schema.SetNull,
-			},
-		},
 	}
 	// VotesColumns holds the columns for the "votes" table.
 	VotesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "voted_on", Type: field.TypeTime},
+		{Name: "user_votes", Type: field.TypeInt, Nullable: true},
 	}
 	// VotesTable holds the schema information for the "votes" table.
 	VotesTable = &schema.Table{
 		Name:       "votes",
 		Columns:    VotesColumns,
 		PrimaryKey: []*schema.Column{VotesColumns[0]},
-	}
-	// UserVotesColumns holds the columns for the "user_votes" table.
-	UserVotesColumns = []*schema.Column{
-		{Name: "user_id", Type: field.TypeInt},
-		{Name: "vote_id", Type: field.TypeInt},
-	}
-	// UserVotesTable holds the schema information for the "user_votes" table.
-	UserVotesTable = &schema.Table{
-		Name:       "user_votes",
-		Columns:    UserVotesColumns,
-		PrimaryKey: []*schema.Column{UserVotesColumns[0], UserVotesColumns[1]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "user_votes_user_id",
-				Columns:    []*schema.Column{UserVotesColumns[0]},
+				Symbol:     "votes_users_votes",
+				Columns:    []*schema.Column{VotesColumns[2]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
+	// PollOptionVotesColumns holds the columns for the "poll_option_votes" table.
+	PollOptionVotesColumns = []*schema.Column{
+		{Name: "poll_option_id", Type: field.TypeInt},
+		{Name: "vote_id", Type: field.TypeInt},
+	}
+	// PollOptionVotesTable holds the schema information for the "poll_option_votes" table.
+	PollOptionVotesTable = &schema.Table{
+		Name:       "poll_option_votes",
+		Columns:    PollOptionVotesColumns,
+		PrimaryKey: []*schema.Column{PollOptionVotesColumns[0], PollOptionVotesColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "poll_option_votes_poll_option_id",
+				Columns:    []*schema.Column{PollOptionVotesColumns[0]},
+				RefColumns: []*schema.Column{PollOptionsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 			{
-				Symbol:     "user_votes_vote_id",
-				Columns:    []*schema.Column{UserVotesColumns[1]},
+				Symbol:     "poll_option_votes_vote_id",
+				Columns:    []*schema.Column{PollOptionVotesColumns[1]},
 				RefColumns: []*schema.Column{VotesColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -120,15 +113,14 @@ var (
 		PollOptionsTable,
 		UsersTable,
 		VotesTable,
-		UserVotesTable,
+		PollOptionVotesTable,
 	}
 )
 
 func init() {
 	PollsTable.ForeignKeys[0].RefTable = UsersTable
 	PollOptionsTable.ForeignKeys[0].RefTable = PollsTable
-	PollOptionsTable.ForeignKeys[1].RefTable = VotesTable
-	UsersTable.ForeignKeys[0].RefTable = PollOptionsTable
-	UserVotesTable.ForeignKeys[0].RefTable = UsersTable
-	UserVotesTable.ForeignKeys[1].RefTable = VotesTable
+	VotesTable.ForeignKeys[0].RefTable = UsersTable
+	PollOptionVotesTable.ForeignKeys[0].RefTable = PollOptionsTable
+	PollOptionVotesTable.ForeignKeys[1].RefTable = VotesTable
 }

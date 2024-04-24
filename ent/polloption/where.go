@@ -59,9 +59,9 @@ func Text(v string) predicate.PollOption {
 	return predicate.PollOption(sql.FieldEQ(FieldText, v))
 }
 
-// Votes applies equality check predicate on the "votes" field. It's identical to VotesEQ.
-func Votes(v int) predicate.PollOption {
-	return predicate.PollOption(sql.FieldEQ(FieldVotes, v))
+// VoteCount applies equality check predicate on the "vote_count" field. It's identical to VoteCountEQ.
+func VoteCount(v int) predicate.PollOption {
+	return predicate.PollOption(sql.FieldEQ(FieldVoteCount, v))
 }
 
 // TextEQ applies the EQ predicate on the "text" field.
@@ -129,44 +129,44 @@ func TextContainsFold(v string) predicate.PollOption {
 	return predicate.PollOption(sql.FieldContainsFold(FieldText, v))
 }
 
-// VotesEQ applies the EQ predicate on the "votes" field.
-func VotesEQ(v int) predicate.PollOption {
-	return predicate.PollOption(sql.FieldEQ(FieldVotes, v))
+// VoteCountEQ applies the EQ predicate on the "vote_count" field.
+func VoteCountEQ(v int) predicate.PollOption {
+	return predicate.PollOption(sql.FieldEQ(FieldVoteCount, v))
 }
 
-// VotesNEQ applies the NEQ predicate on the "votes" field.
-func VotesNEQ(v int) predicate.PollOption {
-	return predicate.PollOption(sql.FieldNEQ(FieldVotes, v))
+// VoteCountNEQ applies the NEQ predicate on the "vote_count" field.
+func VoteCountNEQ(v int) predicate.PollOption {
+	return predicate.PollOption(sql.FieldNEQ(FieldVoteCount, v))
 }
 
-// VotesIn applies the In predicate on the "votes" field.
-func VotesIn(vs ...int) predicate.PollOption {
-	return predicate.PollOption(sql.FieldIn(FieldVotes, vs...))
+// VoteCountIn applies the In predicate on the "vote_count" field.
+func VoteCountIn(vs ...int) predicate.PollOption {
+	return predicate.PollOption(sql.FieldIn(FieldVoteCount, vs...))
 }
 
-// VotesNotIn applies the NotIn predicate on the "votes" field.
-func VotesNotIn(vs ...int) predicate.PollOption {
-	return predicate.PollOption(sql.FieldNotIn(FieldVotes, vs...))
+// VoteCountNotIn applies the NotIn predicate on the "vote_count" field.
+func VoteCountNotIn(vs ...int) predicate.PollOption {
+	return predicate.PollOption(sql.FieldNotIn(FieldVoteCount, vs...))
 }
 
-// VotesGT applies the GT predicate on the "votes" field.
-func VotesGT(v int) predicate.PollOption {
-	return predicate.PollOption(sql.FieldGT(FieldVotes, v))
+// VoteCountGT applies the GT predicate on the "vote_count" field.
+func VoteCountGT(v int) predicate.PollOption {
+	return predicate.PollOption(sql.FieldGT(FieldVoteCount, v))
 }
 
-// VotesGTE applies the GTE predicate on the "votes" field.
-func VotesGTE(v int) predicate.PollOption {
-	return predicate.PollOption(sql.FieldGTE(FieldVotes, v))
+// VoteCountGTE applies the GTE predicate on the "vote_count" field.
+func VoteCountGTE(v int) predicate.PollOption {
+	return predicate.PollOption(sql.FieldGTE(FieldVoteCount, v))
 }
 
-// VotesLT applies the LT predicate on the "votes" field.
-func VotesLT(v int) predicate.PollOption {
-	return predicate.PollOption(sql.FieldLT(FieldVotes, v))
+// VoteCountLT applies the LT predicate on the "vote_count" field.
+func VoteCountLT(v int) predicate.PollOption {
+	return predicate.PollOption(sql.FieldLT(FieldVoteCount, v))
 }
 
-// VotesLTE applies the LTE predicate on the "votes" field.
-func VotesLTE(v int) predicate.PollOption {
-	return predicate.PollOption(sql.FieldLTE(FieldVotes, v))
+// VoteCountLTE applies the LTE predicate on the "vote_count" field.
+func VoteCountLTE(v int) predicate.PollOption {
+	return predicate.PollOption(sql.FieldLTE(FieldVoteCount, v))
 }
 
 // HasPoll applies the HasEdge predicate on the "poll" edge.
@@ -192,21 +192,21 @@ func HasPollWith(preds ...predicate.Poll) predicate.PollOption {
 	})
 }
 
-// HasVotedBy applies the HasEdge predicate on the "voted_by" edge.
-func HasVotedBy() predicate.PollOption {
+// HasVotes applies the HasEdge predicate on the "votes" edge.
+func HasVotes() predicate.PollOption {
 	return predicate.PollOption(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, VotedByTable, VotedByColumn),
+			sqlgraph.Edge(sqlgraph.M2M, false, VotesTable, VotesPrimaryKey...),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasVotedByWith applies the HasEdge predicate on the "voted_by" edge with a given conditions (other predicates).
-func HasVotedByWith(preds ...predicate.User) predicate.PollOption {
+// HasVotesWith applies the HasEdge predicate on the "votes" edge with a given conditions (other predicates).
+func HasVotesWith(preds ...predicate.Vote) predicate.PollOption {
 	return predicate.PollOption(func(s *sql.Selector) {
-		step := newVotedByStep()
+		step := newVotesStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

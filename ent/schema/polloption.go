@@ -16,7 +16,7 @@ type PollOption struct {
 func (PollOption) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("text"),
-		field.Int("votes").Default(0), // Keep track of total votes
+		field.Int("vote_count").Default(0),
 	}
 }
 
@@ -24,6 +24,6 @@ func (PollOption) Fields() []ent.Field {
 func (PollOption) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("poll", Poll.Type).Ref("polloptions").Unique(),
-		edge.To("voted_by", User.Type), // Users who voted for this option
+		edge.To("votes", Vote.Type),
 	}
 }

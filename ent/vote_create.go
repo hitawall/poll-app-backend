@@ -28,19 +28,23 @@ func (vc *VoteCreate) SetVotedOn(t time.Time) *VoteCreate {
 	return vc
 }
 
-// AddUserIDs adds the "user" edge to the User entity by IDs.
-func (vc *VoteCreate) AddUserIDs(ids ...int) *VoteCreate {
-	vc.mutation.AddUserIDs(ids...)
+// SetUserID sets the "user" edge to the User entity by ID.
+func (vc *VoteCreate) SetUserID(id int) *VoteCreate {
+	vc.mutation.SetUserID(id)
 	return vc
 }
 
-// AddUser adds the "user" edges to the User entity.
-func (vc *VoteCreate) AddUser(u ...*User) *VoteCreate {
-	ids := make([]int, len(u))
-	for i := range u {
-		ids[i] = u[i].ID
+// SetNillableUserID sets the "user" edge to the User entity by ID if the given value is not nil.
+func (vc *VoteCreate) SetNillableUserID(id *int) *VoteCreate {
+	if id != nil {
+		vc = vc.SetUserID(*id)
 	}
-	return vc.AddUserIDs(ids...)
+	return vc
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (vc *VoteCreate) SetUser(u *User) *VoteCreate {
+	return vc.SetUserID(u.ID)
 }
 
 // AddPolloptionIDs adds the "polloption" edge to the PollOption entity by IDs.
@@ -95,9 +99,6 @@ func (vc *VoteCreate) check() error {
 	if _, ok := vc.mutation.VotedOn(); !ok {
 		return &ValidationError{Name: "voted_on", err: errors.New(`ent: missing required field "Vote.voted_on"`)}
 	}
-	if len(vc.mutation.PolloptionIDs()) == 0 {
-		return &ValidationError{Name: "polloption", err: errors.New(`ent: missing required edge "Vote.polloption"`)}
-	}
 	return nil
 }
 
@@ -130,10 +131,10 @@ func (vc *VoteCreate) createSpec() (*Vote, *sqlgraph.CreateSpec) {
 	}
 	if nodes := vc.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.M2O,
 			Inverse: true,
 			Table:   vote.UserTable,
-			Columns: vote.UserPrimaryKey,
+			Columns: []string{vote.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
@@ -142,14 +143,15 @@ func (vc *VoteCreate) createSpec() (*Vote, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_node.user_votes = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := vc.mutation.PolloptionIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
 			Table:   vote.PolloptionTable,
-			Columns: []string{vote.PolloptionColumn},
+			Columns: vote.PolloptionPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(polloption.FieldID, field.TypeInt),

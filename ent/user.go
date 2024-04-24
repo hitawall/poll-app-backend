@@ -24,9 +24,8 @@ type User struct {
 	Password string `json:"password,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserQuery when eager-loading is set.
-	Edges                UserEdges `json:"edges"`
-	poll_option_voted_by *int
-	selectValues         sql.SelectValues
+	Edges        UserEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // UserEdges holds the relations/edges for other nodes in the graph.
@@ -67,8 +66,6 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case user.FieldEmail, user.FieldName, user.FieldPassword:
 			values[i] = new(sql.NullString)
-		case user.ForeignKeys[0]: // poll_option_voted_by
-			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -107,13 +104,6 @@ func (u *User) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field password", values[i])
 			} else if value.Valid {
 				u.Password = value.String
-			}
-		case user.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field poll_option_voted_by", value)
-			} else if value.Valid {
-				u.poll_option_voted_by = new(int)
-				*u.poll_option_voted_by = int(value.Int64)
 			}
 		default:
 			u.selectValues.Set(columns[i], values[i])

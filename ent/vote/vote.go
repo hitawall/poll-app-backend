@@ -20,18 +20,18 @@ const (
 	EdgePolloption = "polloption"
 	// Table holds the table name of the vote in the database.
 	Table = "votes"
-	// UserTable is the table that holds the user relation/edge. The primary key declared below.
-	UserTable = "user_votes"
+	// UserTable is the table that holds the user relation/edge.
+	UserTable = "votes"
 	// UserInverseTable is the table name for the User entity.
 	// It exists in this package in order to avoid circular dependency with the "user" package.
 	UserInverseTable = "users"
-	// PolloptionTable is the table that holds the polloption relation/edge.
-	PolloptionTable = "poll_options"
+	// UserColumn is the table column denoting the user relation/edge.
+	UserColumn = "user_votes"
+	// PolloptionTable is the table that holds the polloption relation/edge. The primary key declared below.
+	PolloptionTable = "poll_option_votes"
 	// PolloptionInverseTable is the table name for the PollOption entity.
 	// It exists in this package in order to avoid circular dependency with the "polloption" package.
 	PolloptionInverseTable = "poll_options"
-	// PolloptionColumn is the table column denoting the polloption relation/edge.
-	PolloptionColumn = "vote_polloption"
 )
 
 // Columns holds all SQL columns for vote fields.
@@ -40,16 +40,27 @@ var Columns = []string{
 	FieldVotedOn,
 }
 
+// ForeignKeys holds the SQL foreign-keys that are owned by the "votes"
+// table and are not defined as standalone fields in the schema.
+var ForeignKeys = []string{
+	"user_votes",
+}
+
 var (
-	// UserPrimaryKey and UserColumn2 are the table columns denoting the
-	// primary key for the user relation (M2M).
-	UserPrimaryKey = []string{"user_id", "vote_id"}
+	// PolloptionPrimaryKey and PolloptionColumn2 are the table columns denoting the
+	// primary key for the polloption relation (M2M).
+	PolloptionPrimaryKey = []string{"poll_option_id", "vote_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
+			return true
+		}
+	}
+	for i := range ForeignKeys {
+		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -69,17 +80,10 @@ func ByVotedOn(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldVotedOn, opts...).ToFunc()
 }
 
-// ByUserCount orders the results by user count.
-func ByUserCount(opts ...sql.OrderTermOption) OrderOption {
+// ByUserField orders the results by user field.
+func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newUserStep(), opts...)
-	}
-}
-
-// ByUser orders the results by user terms.
-func ByUser(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newUserStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newUserStep(), sql.OrderByField(field, opts...))
 	}
 }
 
@@ -100,13 +104,13 @@ func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(UserInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, true, UserTable, UserPrimaryKey...),
+		sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
 	)
 }
 func newPolloptionStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PolloptionInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, PolloptionTable, PolloptionColumn),
+		sqlgraph.Edge(sqlgraph.M2M, true, PolloptionTable, PolloptionPrimaryKey...),
 	)
 }

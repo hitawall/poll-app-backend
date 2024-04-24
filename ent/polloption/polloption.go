@@ -14,12 +14,12 @@ const (
 	FieldID = "id"
 	// FieldText holds the string denoting the text field in the database.
 	FieldText = "text"
-	// FieldVotes holds the string denoting the votes field in the database.
-	FieldVotes = "votes"
+	// FieldVoteCount holds the string denoting the vote_count field in the database.
+	FieldVoteCount = "vote_count"
 	// EdgePoll holds the string denoting the poll edge name in mutations.
 	EdgePoll = "poll"
-	// EdgeVotedBy holds the string denoting the voted_by edge name in mutations.
-	EdgeVotedBy = "voted_by"
+	// EdgeVotes holds the string denoting the votes edge name in mutations.
+	EdgeVotes = "votes"
 	// Table holds the table name of the polloption in the database.
 	Table = "poll_options"
 	// PollTable is the table that holds the poll relation/edge.
@@ -29,28 +29,31 @@ const (
 	PollInverseTable = "polls"
 	// PollColumn is the table column denoting the poll relation/edge.
 	PollColumn = "poll_polloptions"
-	// VotedByTable is the table that holds the voted_by relation/edge.
-	VotedByTable = "users"
-	// VotedByInverseTable is the table name for the User entity.
-	// It exists in this package in order to avoid circular dependency with the "user" package.
-	VotedByInverseTable = "users"
-	// VotedByColumn is the table column denoting the voted_by relation/edge.
-	VotedByColumn = "poll_option_voted_by"
+	// VotesTable is the table that holds the votes relation/edge. The primary key declared below.
+	VotesTable = "poll_option_votes"
+	// VotesInverseTable is the table name for the Vote entity.
+	// It exists in this package in order to avoid circular dependency with the "vote" package.
+	VotesInverseTable = "votes"
 )
 
 // Columns holds all SQL columns for polloption fields.
 var Columns = []string{
 	FieldID,
 	FieldText,
-	FieldVotes,
+	FieldVoteCount,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "poll_options"
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"poll_polloptions",
-	"vote_polloption",
 }
+
+var (
+	// VotesPrimaryKey and VotesColumn2 are the table columns denoting the
+	// primary key for the votes relation (M2M).
+	VotesPrimaryKey = []string{"poll_option_id", "vote_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -68,8 +71,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// DefaultVotes holds the default value on creation for the "votes" field.
-	DefaultVotes int
+	// DefaultVoteCount holds the default value on creation for the "vote_count" field.
+	DefaultVoteCount int
 )
 
 // OrderOption defines the ordering options for the PollOption queries.
@@ -85,9 +88,9 @@ func ByText(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldText, opts...).ToFunc()
 }
 
-// ByVotes orders the results by the votes field.
-func ByVotes(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldVotes, opts...).ToFunc()
+// ByVoteCount orders the results by the vote_count field.
+func ByVoteCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVoteCount, opts...).ToFunc()
 }
 
 // ByPollField orders the results by poll field.
@@ -97,17 +100,17 @@ func ByPollField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
-// ByVotedByCount orders the results by voted_by count.
-func ByVotedByCount(opts ...sql.OrderTermOption) OrderOption {
+// ByVotesCount orders the results by votes count.
+func ByVotesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newVotedByStep(), opts...)
+		sqlgraph.OrderByNeighborsCount(s, newVotesStep(), opts...)
 	}
 }
 
-// ByVotedBy orders the results by voted_by terms.
-func ByVotedBy(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// ByVotes orders the results by votes terms.
+func ByVotes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newVotedByStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newVotesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 func newPollStep() *sqlgraph.Step {
@@ -117,10 +120,10 @@ func newPollStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2O, true, PollTable, PollColumn),
 	)
 }
-func newVotedByStep() *sqlgraph.Step {
+func newVotesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(VotedByInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, VotedByTable, VotedByColumn),
+		sqlgraph.To(VotesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, VotesTable, VotesPrimaryKey...),
 	)
 }
