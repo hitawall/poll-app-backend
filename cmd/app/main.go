@@ -2,16 +2,20 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/lib/pq"
 	"github.com/rs/cors"
-	"log"
-	"net/http"
 	"poll-app-backend/ent"
 	"poll-app-backend/handlers"
 )
 
 func main() {
+	// Database connection
 	client, err := ent.Open("postgres", "host=localhost port=5432 user=postgres password=password dbname=poll_app sslmode=disable", ent.Debug())
 	if err != nil {
 		log.Fatalf("failed opening connection to postgres: %v", err)
@@ -26,7 +30,6 @@ func main() {
 	router.POST("/login", handlers.LoginHandler(client))
 	router.POST("/signup", handlers.SignupHandler(client))
 
-	// Apply authentication middleware only to these routes
 	router.POST("/polls", handlers.AuthMiddleware(client, handlers.CreatePoll(client)))
 	router.GET("/polls/:id", handlers.AuthMiddleware(client, handlers.GetPoll(client)))
 	router.POST("/polls/:id/options", handlers.AuthMiddleware(client, handlers.AddOption(client)))
@@ -37,13 +40,24 @@ func main() {
 	router.PUT("/options/:id", handlers.AuthMiddleware(client, handlers.UpdateOption(client)))
 	router.DELETE("/options/:id", handlers.AuthMiddleware(client, handlers.DeleteOption(client)))
 
+	// Environment variables for frontend address and backend port
+	frontendAddress := os.Getenv("FRONTEND_ADDRESS")
+	if frontendAddress == "" {
+		frontendAddress = "http://localhost:3000" // Default frontend address
+	}
+
+	backendPort := os.Getenv("BACKEND_PORT")
+	if backendPort == "" {
+		backendPort = "8080" // Default backend port
+	}
+
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedOrigins:   []string{frontendAddress},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		AllowCredentials: true,
 	})
 
 	handler := c.Handler(router)
-	log.Fatal(http.ListenAndServe(":8080", handler))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", backendPort), handler))
 }
